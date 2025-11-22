@@ -19,15 +19,9 @@ protected:
         config_ = WHEPConfig{};
         config_.url = "https://sfu.example.com/whep";
         config_.bearerToken = "test-token-12345";
-        config_.onConnected = [this]() {
-            connected_ = true;
-        };
-        config_.onDisconnected = [this]() {
-            connected_ = false;
-        };
-        config_.onError = [this](const std::string& error) {
-            lastError_ = error;
-        };
+        config_.onConnected = [this]() { connected_ = true; };
+        config_.onDisconnected = [this]() { connected_ = false; };
+        config_.onError = [this](const std::string& error) { lastError_ = error; };
         config_.onIceCandidate = [this](const std::string& candidate, const std::string& mid) {
             receivedCandidates_.push_back({candidate, mid});
         };
@@ -43,9 +37,7 @@ protected:
  * @brief Test WHEPClient construction
  */
 TEST_F(WHEPClientTest, ConstructionWithValidConfig) {
-    EXPECT_NO_THROW({
-        auto client = std::make_unique<WHEPClient>(config_);
-    });
+    EXPECT_NO_THROW({ auto client = std::make_unique<WHEPClient>(config_); });
 }
 
 /**
@@ -53,9 +45,7 @@ TEST_F(WHEPClientTest, ConstructionWithValidConfig) {
  */
 TEST_F(WHEPClientTest, ConstructionWithEmptyUrl) {
     config_.url = "";
-    EXPECT_THROW({
-        auto client = std::make_unique<WHEPClient>(config_);
-    }, std::invalid_argument);
+    EXPECT_THROW({ auto client = std::make_unique<WHEPClient>(config_); }, std::invalid_argument);
 }
 
 /**
@@ -67,9 +57,7 @@ TEST_F(WHEPClientTest, SendOffer) {
     const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
     std::string receivedAnswer;
 
-    EXPECT_NO_THROW({
-        receivedAnswer = client->sendOffer(testOffer);
-    });
+    EXPECT_NO_THROW({ receivedAnswer = client->sendOffer(testOffer); });
 }
 
 /**
@@ -80,9 +68,7 @@ TEST_F(WHEPClientTest, SendOfferWithInvalidSDP) {
 
     const std::string invalidOffer = "";
 
-    EXPECT_THROW({
-        client->sendOffer(invalidOffer);
-    }, std::invalid_argument);
+    EXPECT_THROW({ client->sendOffer(invalidOffer); }, std::invalid_argument);
 }
 
 /**
@@ -98,9 +84,7 @@ TEST_F(WHEPClientTest, SendIceCandidate) {
     const std::string candidate = "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host";
     const std::string mid = "0";
 
-    EXPECT_NO_THROW({
-        client->sendIceCandidate(candidate, mid);
-    });
+    EXPECT_NO_THROW({ client->sendIceCandidate(candidate, mid); });
 }
 
 /**
@@ -112,9 +96,7 @@ TEST_F(WHEPClientTest, SendIceCandidateWithoutConnectionThrows) {
     const std::string candidate = "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host";
     const std::string mid = "0";
 
-    EXPECT_THROW({
-        client->sendIceCandidate(candidate, mid);
-    }, std::runtime_error);
+    EXPECT_THROW({ client->sendIceCandidate(candidate, mid); }, std::runtime_error);
 }
 
 /**
@@ -126,9 +108,7 @@ TEST_F(WHEPClientTest, BearerTokenAuthentication) {
     const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
 
     // Should include bearer token in request
-    EXPECT_NO_THROW({
-        client->sendOffer(testOffer);
-    });
+    EXPECT_NO_THROW({ client->sendOffer(testOffer); });
 }
 
 /**
@@ -168,9 +148,7 @@ TEST_F(WHEPClientTest, HandleUnauthorizedError) {
     const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
 
     // Should throw on 401 error
-    EXPECT_THROW({
-        client->sendOffer(testOffer);
-    }, std::runtime_error);
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
 }
 
 /**
@@ -182,9 +160,7 @@ TEST_F(WHEPClientTest, HandleLocationHeader) {
     const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
 
     // Should store resource URL from Location header
-    EXPECT_NO_THROW({
-        std::string answer = client->sendOffer(testOffer);
-    });
+    EXPECT_NO_THROW({ std::string answer = client->sendOffer(testOffer); });
 }
 
 /**
