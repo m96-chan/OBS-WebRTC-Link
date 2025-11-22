@@ -75,6 +75,12 @@ struct WebRTCOutputConfig {
     int audioBitrate = 128;   // kbps
     ErrorCallback errorCallback;
     StateCallback stateCallback;
+
+    // Reconnection settings
+    bool enableAutoReconnect = true;
+    int maxReconnectRetries = 5;
+    int reconnectInitialDelayMs = 1000;
+    int reconnectMaxDelayMs = 30000;
 };
 
 /**

@@ -5,6 +5,7 @@
 
 #include "webrtc-source.hpp"
 #include "core/whep-client.hpp"
+#include "core/reconnection-manager.hpp"
 #include <stdexcept>
 #include <atomic>
 #include <mutex>
@@ -22,6 +23,17 @@ public:
         , active_(false)
         , connectionState_(ConnectionState::Disconnected)
     {
+        // Initialize reconnection manager if enabled
+        if (config_.enableAutoReconnect) {
+            core::ReconnectionConfig reconnectConfig;
+            reconnectConfig.maxRetries = config_.maxReconnectRetries;
+            reconnectConfig.initialDelayMs = config_.reconnectInitialDelayMs;
+            reconnectConfig.maxDelayMs = config_.reconnectMaxDelayMs;
+            reconnectConfig.reconnectCallback = [this]() {
+                attemptReconnect();
+            };
+            reconnectionManager_ = std::make_unique<core::ReconnectionManager>(reconnectConfig);
+        }
     }
 
     ~Impl()
@@ -43,15 +55,27 @@ public:
             whepConfig.url = config_.serverUrl;
             whepConfig.onConnected = [this]() {
                 setConnectionState(ConnectionState::Connected);
+                // Reset reconnection manager on successful connection
+                if (reconnectionManager_) {
+                    reconnectionManager_->onConnectionSuccess();
+                }
             };
             whepConfig.onDisconnected = [this]() {
                 setConnectionState(ConnectionState::Disconnected);
+                // Schedule reconnection on disconnection
+                if (reconnectionManager_ && config_.enableAutoReconnect) {
+                    reconnectionManager_->scheduleReconnect();
+                }
             };
             whepConfig.onError = [this](const std::string& error) {
                 if (config_.errorCallback) {
                     config_.errorCallback(error);
                 }
                 setConnectionState(ConnectionState::Failed);
+                // Schedule reconnection on error
+                if (reconnectionManager_ && config_.enableAutoReconnect) {
+                    reconnectionManager_->scheduleReconnect();
+                }
             };
 
             whepClient_ = std::make_unique<core::WHEPClient>(whepConfig);
@@ -79,6 +103,11 @@ public:
             return;
         }
 
+        // Cancel reconnection
+        if (reconnectionManager_) {
+            reconnectionManager_->cancel();
+        }
+
         if (whepClient_) {
             whepClient_.reset();
         }
@@ -98,6 +127,20 @@ public:
     }
 
 private:
+    void attemptReconnect()
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        // Clean up existing connection
+        if (whepClient_) {
+            whepClient_.reset();
+        }
+
+        // Reset state
+        active_ = false;
+        setConnectionState(ConnectionState::Disconnected);
+    }
+
     void setConnectionState(ConnectionState state)
     {
         connectionState_ = state;
@@ -108,6 +151,7 @@ private:
 
     WebRTCSourceConfig config_;
     std::unique_ptr<core::WHEPClient> whepClient_;
+    std::unique_ptr<core::ReconnectionManager> reconnectionManager_;
     std::atomic<bool> active_;
     std::atomic<ConnectionState> connectionState_;
     std::mutex mutex_;
