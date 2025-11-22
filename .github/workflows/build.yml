@@ -70,18 +70,34 @@ jobs:
         git clone --recursive https://github.com/obsproject/obs-studio.git
         cd obs-studio
         git checkout 30.2.0
-        mkdir build && cd build
-        cmake .. \
-          -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=$PWD/install \
-          -DENABLE_BROWSER=OFF \
-          -DENABLE_WEBSOCKET=OFF \
-          -DENABLE_SCRIPTING=OFF \
-          -DBUILD_TESTS=OFF \
-          -DENABLE_UI=OFF
-        ninja obs-frontend-api
-        ninja install
+
+        # Create CMake preset for minimal SDK build
+        cat > CMakeUserPresets.json << 'PRESET_EOF'
+        {
+          "version": 3,
+          "configurePresets": [
+            {
+              "name": "ci-linux-minimal",
+              "displayName": "Linux Minimal SDK",
+              "binaryDir": "${sourceDir}/build",
+              "generator": "Ninja",
+              "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install",
+                "ENABLE_BROWSER": false,
+                "ENABLE_WEBSOCKET": false,
+                "ENABLE_SCRIPTING": false,
+                "ENABLE_UI": false,
+                "BUILD_TESTS": false
+              }
+            }
+          ]
+        }
+        PRESET_EOF
+
+        cmake --preset ci-linux-minimal
+        cmake --build build --target obs-frontend-api
+        cmake --build build --target install
 
     - name: Upload OBS SDK
       uses: actions/upload-artifact@v4
