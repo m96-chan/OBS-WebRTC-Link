@@ -145,8 +145,7 @@ public:
                 sendHTTPDelete(resourceUrl_, request);
             } catch (const std::exception& e) {
                 if (config_.onError) {
-                    config_.onError("Error during disconnect: " +
-                                    std::string(e.what()));
+                    config_.onError("Error during disconnect: " + std::string(e.what()));
                 }
             }
         }
@@ -185,16 +184,14 @@ private:
         response.statusCode = 201;
         response.headers["Location"] = url + "/resource/123";
         response.headers["Content-Type"] = "application/sdp";
-        response.body =
-            "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";  // Mock SDP answer
+        response.body = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";  // Mock SDP answer
         return response;
     }
 
     /**
      * @brief Send HTTP PATCH request
      */
-    HTTPResponse sendHTTPPatch(const std::string& url,
-                               const HTTPRequest& request) {
+    HTTPResponse sendHTTPPatch(const std::string& url, const HTTPRequest& request) {
         // Stub implementation for testing
         HTTPResponse response;
         response.statusCode = 204;  // No Content
@@ -204,8 +201,7 @@ private:
     /**
      * @brief Send HTTP DELETE request
      */
-    HTTPResponse sendHTTPDelete(const std::string& url,
-                                const HTTPRequest& request) {
+    HTTPResponse sendHTTPDelete(const std::string& url, const HTTPRequest& request) {
         // Stub implementation for testing
         HTTPResponse response;
         response.statusCode = 200;
