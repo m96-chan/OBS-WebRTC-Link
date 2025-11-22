@@ -4,9 +4,12 @@
  */
 
 #include "whep-client.hpp"
+
 #include "whip-client.hpp"  // For HTTPRequest and HTTPResponse
-#include <stdexcept>
+
 #include <nlohmann/json.hpp>
+
+#include <stdexcept>
 
 namespace obswebrtc {
 namespace core {
@@ -229,5 +232,5 @@ bool WHEPClient::isConnected() const {
     return impl_->isConnected();
 }
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc

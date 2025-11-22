@@ -4,8 +4,10 @@
  */
 
 #include "whip-client.hpp"
-#include <stdexcept>
+
 #include <nlohmann/json.hpp>
+
+#include <stdexcept>
 
 namespace obswebrtc {
 namespace core {
@@ -228,5 +230,5 @@ bool WHIPClient::isConnected() const {
     return impl_->isConnected();
 }
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc

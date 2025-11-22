@@ -3,11 +3,12 @@
  * @brief Unit tests for WHEPClient
  */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include "core/whep-client.hpp"
-#include <thread>
+
 #include <chrono>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <thread>
 
 using namespace obswebrtc::core;
 using namespace testing;

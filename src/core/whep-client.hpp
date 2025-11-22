@@ -10,9 +10,9 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
-#include <map>
 
 namespace obswebrtc {
 namespace core {
@@ -29,7 +29,8 @@ struct HTTPResponse;
 using WHEPConnectedCallback = std::function<void()>;
 using WHEPDisconnectedCallback = std::function<void()>;
 using WHEPErrorCallback = std::function<void(const std::string& error)>;
-using WHEPIceCandidateCallback = std::function<void(const std::string& candidate, const std::string& mid)>;
+using WHEPIceCandidateCallback =
+    std::function<void(const std::string& candidate, const std::string& mid)>;
 
 /**
  * @brief Configuration for WHEPClient
@@ -125,5 +126,5 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc
