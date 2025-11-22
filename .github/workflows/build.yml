@@ -65,7 +65,8 @@ jobs:
           libdrm-dev \
           uthash-dev \
           libxkbcommon-dev \
-          libxcb-composite0-dev
+          libxcb-composite0-dev \
+          libv4l-dev
 
     - name: Build OBS Studio SDK
       if: steps.cache-obs.outputs.cache-hit != 'true'
