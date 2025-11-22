@@ -157,6 +157,8 @@ target_link_libraries(obs-webrtc-core PUBLIC
 if(NOT BUILD_TESTS_ONLY)
     set(PLUGIN_SOURCES
         src/plugin-main.cpp
+        src/output/obs-webrtc-output.cpp
+        src/output/webrtc-output.cpp
     )
 
     # Create plugin library
