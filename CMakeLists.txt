@@ -165,6 +165,8 @@ if(NOT BUILD_TESTS_ONLY)
         src/plugin-main.cpp
         src/output/obs-webrtc-output.cpp
         src/output/webrtc-output.cpp
+        src/source/obs-webrtc-source.cpp
+        src/source/webrtc-source.cpp
     )
 
     # Create plugin library
