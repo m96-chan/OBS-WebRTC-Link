@@ -161,3 +161,27 @@ if(WIN32)
 else()
     gtest_discover_tests(webrtc_output_test)
 endif()
+
+# WebRTCSource test executable
+add_executable(webrtc_source_test
+    webrtc_source_test.cpp
+    ../../src/source/webrtc-source.cpp
+)
+
+target_include_directories(webrtc_source_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(webrtc_source_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover WebRTC source tests
+if(WIN32)
+    gtest_add_tests(TARGET webrtc_source_test)
+else()
+    gtest_discover_tests(webrtc_source_test)
+endif()
