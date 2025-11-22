@@ -209,7 +209,9 @@ jobs:
         name: linux-test-binaries
         path: |
           build/tests/unit/*_test
-          build/Testing/
+          build/tests/unit/CTestTestfile.cmake
+          build/CTestTestfile.cmake
+          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -278,7 +280,9 @@ jobs:
         name: windows-test-binaries
         path: |
           build/tests/unit/Release/*_test.exe
-          build/Testing/
+          build/tests/unit/CTestTestfile.cmake
+          build/CTestTestfile.cmake
+          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -350,7 +354,9 @@ jobs:
         name: macos-test-binaries
         path: |
           build/tests/unit/*_test
-          build/Testing/
+          build/tests/unit/CTestTestfile.cmake
+          build/CTestTestfile.cmake
+          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -364,106 +370,13 @@ jobs:
         if-no-files-found: ignore
 
   # ============================================================================
-  # Test Jobs - Execute tests using built binaries
-  # ============================================================================
-
-  test-linux:
-    name: Test (Linux)
-    runs-on: ubuntu-latest
-    needs: build-linux
-
-    steps:
-    - name: Download test binaries
-      uses: actions/download-artifact@v4
-      with:
-        name: linux-test-binaries
-        path: build
-
-    - name: Set executable permissions
-      run: |
-        chmod +x build/tests/unit/*_test
-
-    - name: Run all tests with CTest
-      run: |
-        cd build
-        ctest --output-on-failure --verbose
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-test-results
-        path: |
-          build/test-results.xml
-          build/Testing/**/*.xml
-        if-no-files-found: ignore
-
-  test-windows:
-    name: Test (Windows)
-    runs-on: windows-latest
-    needs: build-windows
-
-    steps:
-    - name: Download test binaries
-      uses: actions/download-artifact@v4
-      with:
-        name: windows-test-binaries
-        path: build
-
-    - name: Run all tests with CTest
-      run: |
-        cd build
-        ctest -C Release --output-on-failure --verbose
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-test-results
-        path: |
-          build/tests/unit/Release/test-results.xml
-          build/Testing/**/*.xml
-        if-no-files-found: ignore
-
-  test-macos:
-    name: Test (macOS)
-    runs-on: macos-latest
-    needs: build-macos
-
-    steps:
-    - name: Download test binaries
-      uses: actions/download-artifact@v4
-      with:
-        name: macos-test-binaries
-        path: build
-
-    - name: Set executable permissions
-      run: |
-        chmod +x build/tests/unit/*_test
-
-    - name: Run all tests with CTest
-      run: |
-        cd build
-        ctest --output-on-failure --verbose
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-test-results
-        path: |
-          build/test-results.xml
-          build/Testing/**/*.xml
-        if-no-files-found: ignore
-
-  # ============================================================================
-  # Summary Job - Aggregate results
+  # Summary Job - Aggregate build results
   # ============================================================================
 
   summary:
-    name: CI Summary
+    name: Build Summary
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows, build-macos, test-linux, test-windows, test-macos]
+    needs: [build-linux, build-windows, build-macos]
     if: always()
 
     steps:
@@ -476,17 +389,12 @@ jobs:
 
     - name: Check results
       run: |
-        echo "# CI/CD Pipeline Summary"
+        echo "# Build Pipeline Summary"
         echo ""
         echo "## Build Results"
         echo "- Linux:   ${{ needs.build-linux.result }}"
         echo "- Windows: ${{ needs.build-windows.result }}"
         echo "- macOS:   ${{ needs.build-macos.result }}"
-        echo ""
-        echo "## Test Results"
-        echo "- Linux:   ${{ needs.test-linux.result }}"
-        echo "- Windows: ${{ needs.test-windows.result }}"
-        echo "- macOS:   ${{ needs.test-macos.result }}"
         echo ""
         echo "## Build Artifacts"
         if [ -f artifacts/obs-webrtc-link.so ]; then
@@ -498,23 +406,21 @@ jobs:
         echo "## Notes"
         echo "- Linux builds full plugin with OBS SDK"
         echo "- Windows/macOS build tests only (OBS SDK not available)"
+        echo "- Test execution is handled by a separate workflow"
         echo "- This workflow validates:"
         echo "  ✓ OBS SDK compilation and caching"
         echo "  ✓ Plugin compilation (Linux)"
         echo "  ✓ Dependency compilation (all platforms)"
         echo "  ✓ Cross-platform CMake configuration"
-        echo "  ✓ Unit test compilation and execution"
+        echo "  ✓ Unit test compilation"
         echo ""
 
-        # Fail the summary job if any build or test failed
+        # Fail the summary job if any build failed
         if [[ "${{ needs.build-linux.result }}" != "success" ]] || \
            [[ "${{ needs.build-windows.result }}" != "success" ]] || \
-           [[ "${{ needs.build-macos.result }}" != "success" ]] || \
-           [[ "${{ needs.test-linux.result }}" != "success" ]] || \
-           [[ "${{ needs.test-windows.result }}" != "success" ]] || \
-           [[ "${{ needs.test-macos.result }}" != "success" ]]; then
-          echo "❌ Some jobs failed"
+           [[ "${{ needs.build-macos.result }}" != "success" ]]; then
+          echo "❌ Some builds failed"
           exit 1
         else
-          echo "✅ All jobs passed"
+          echo "✅ All builds passed"
         fi
