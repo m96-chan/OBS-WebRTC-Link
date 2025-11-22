@@ -4,6 +4,10 @@ FindLibDataChannel
 
 Find the LibDataChannel library.
 
+LibDataChannel is a standalone WebRTC data channels and media transport library.
+This module supports finding the library from system installation, pkg-config,
+or Git submodules.
+
 IMPORTED Targets
 ^^^^^^^^^^^^^^^^
 
@@ -25,6 +29,31 @@ This module will set the following variables in your project:
   Libraries to link against LibDataChannel.
 ``LibDataChannel_VERSION``
   The version of LibDataChannel found.
+
+Cache Variables
+^^^^^^^^^^^^^^^
+
+The following cache variables may be set to help find the library:
+
+``LIBDATACHANNEL_DIR``
+  The root directory of the LibDataChannel installation.
+
+Usage
+^^^^^
+
+Basic usage::
+
+  find_package(LibDataChannel REQUIRED)
+  target_link_libraries(mytarget PRIVATE LibDataChannel::LibDataChannel)
+
+With version requirement::
+
+  find_package(LibDataChannel 0.17.0 REQUIRED)
+
+Using environment variable::
+
+  set(ENV{LIBDATACHANNEL_DIR} "/path/to/libdatachannel")
+  find_package(LibDataChannel REQUIRED)
 
 #]=======================================================================]
 
