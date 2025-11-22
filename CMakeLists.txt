@@ -47,6 +47,56 @@ endif()
 message(STATUS "Found libobs include: ${LIBOBS_INCLUDE_DIR}")
 message(STATUS "Found libobs library: ${LIBOBS_LIB}")
 
+# Dependencies
+# Note: Submodules must be initialized with: git submodule update --init --recursive
+
+# Option to build libdatachannel from source
+option(BUILD_LIBDATACHANNEL "Build libdatachannel from source" ON)
+
+if(BUILD_LIBDATACHANNEL)
+    # Build libdatachannel as submodule
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/libdatachannel/CMakeLists.txt")
+        message(STATUS "Building libdatachannel from submodule")
+
+        # Configure libdatachannel options
+        set(NO_EXAMPLES ON CACHE BOOL "" FORCE)
+        set(NO_TESTS ON CACHE BOOL "" FORCE)
+        set(NO_WEBSOCKET ON CACHE BOOL "" FORCE)
+
+        add_subdirectory(deps/libdatachannel EXCLUDE_FROM_ALL)
+
+        set(LibDataChannel_FOUND TRUE)
+        set(LibDataChannel_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/deps/libdatachannel/include")
+    else()
+        message(WARNING "libdatachannel submodule not found. Run: git submodule update --init --recursive")
+        set(BUILD_LIBDATACHANNEL OFF)
+    endif()
+endif()
+
+if(NOT BUILD_LIBDATACHANNEL)
+    # Try to find system-installed libdatachannel
+    find_package(LibDataChannel REQUIRED)
+    message(STATUS "Found libdatachannel: ${LibDataChannel_LIBRARIES}")
+endif()
+
+# nlohmann-json
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/nlohmann-json/CMakeLists.txt")
+    message(STATUS "Using nlohmann-json from submodule")
+
+    # Configure nlohmann-json options
+    set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+    set(JSON_Install OFF CACHE BOOL "" FORCE)
+
+    add_subdirectory(deps/nlohmann-json EXCLUDE_FROM_ALL)
+
+    set(nlohmann_json_FOUND TRUE)
+else()
+    message(WARNING "nlohmann-json submodule not found. Run: git submodule update --init --recursive")
+
+    # Try to find system-installed nlohmann-json
+    find_package(nlohmann_json 3.2.0 REQUIRED)
+endif()
+
 # Plugin sources
 set(PLUGIN_SOURCES
     src/plugin-main.cpp
@@ -59,6 +109,7 @@ add_library(${PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${LIBOBS_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${LibDataChannel_INCLUDE_DIRS}
 )
 
 # Define plugin version
@@ -67,8 +118,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME} PRIVATE
     ${LIBOBS_LIB}
+    datachannel-static
+    nlohmann_json::nlohmann_json
 )
 
 # Set output name
