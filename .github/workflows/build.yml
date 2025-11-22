@@ -1,4 +1,4 @@
-name: Build
+name: Build and Test
 
 on:
   push:
@@ -8,8 +8,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ============================================================================
+  # Build Jobs - Build dependencies and test binaries
+  # ============================================================================
+
   build-linux:
-    name: Build on Ubuntu
+    name: Build (Linux)
     runs-on: ubuntu-latest
 
     steps:
@@ -29,51 +33,51 @@ jobs:
           pkg-config \
           libssl-dev
 
-    - name: Configure CMake (Dependencies Only)
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_LIBDATACHANNEL=ON \
-          -DBUILD_TESTING=ON
-      continue-on-error: true
-
-    - name: Build Dependencies
-      run: |
-        cd build
-        ninja datachannel-static || true
-        ninja nlohmann_json || true
-      continue-on-error: true
-
-    - name: Build and Run Tests
-      run: |
-        cd build
-        ninja gtest gtest_main gmock || true
-        ninja sample_test || true
-        ctest --output-on-failure || true
-      continue-on-error: true
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-test-results
-        path: |
-          build/Testing/**/*.xml
-        if-no-files-found: ignore
-
     - name: Check submodules
       run: |
         echo "=== Checking Git Submodules ==="
         git submodule status
         echo ""
         echo "=== libdatachannel exists: ==="
-        ls -la deps/libdatachannel/ || echo "libdatachannel not found"
+        test -d deps/libdatachannel && echo "✓ Found" || echo "✗ Not found"
         echo ""
         echo "=== nlohmann-json exists: ==="
-        ls -la deps/nlohmann-json/ || echo "nlohmann-json not found"
+        test -d deps/nlohmann-json && echo "✓ Found" || echo "✗ Not found"
         echo ""
         echo "=== googletest exists: ==="
-        ls -la deps/googletest/ || echo "googletest not found"
+        test -d deps/googletest && echo "✓ Found" || echo "✗ Not found"
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=ON
+
+    - name: Build dependencies
+      run: |
+        cd build
+        ninja datachannel-static
+        ninja nlohmann_json
+
+    - name: Build test framework
+      run: |
+        cd build
+        ninja gtest gtest_main gmock
+
+    - name: Build tests
+      run: |
+        cd build
+        ninja sample_test
+
+    - name: Upload test binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-test-binaries
+        path: |
+          build/tests/unit/sample_test
+          build/Testing/
+        retention-days: 1
 
     - name: Upload build logs
       if: always()
@@ -86,7 +90,7 @@ jobs:
         if-no-files-found: ignore
 
   build-windows:
-    name: Build on Windows
+    name: Build (Windows)
     runs-on: windows-latest
 
     steps:
@@ -98,50 +102,49 @@ jobs:
     - name: Setup MSVC
       uses: microsoft/setup-msbuild@v2
 
-    - name: Configure CMake (Dependencies Only)
-      run: |
-        cmake -B build `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DBUILD_LIBDATACHANNEL=ON `
-          -DBUILD_TESTING=ON
-      continue-on-error: true
-
-    - name: Build Dependencies
-      run: |
-        cmake --build build --config Release --target datachannel-static
-      continue-on-error: true
-
-    - name: Build and Run Tests
-      run: |
-        cmake --build build --config Release --target gtest
-        cmake --build build --config Release --target sample_test
-        cd build
-        ctest -C Release --output-on-failure
-      continue-on-error: true
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-test-results
-        path: |
-          build/Testing/**/*.xml
-        if-no-files-found: ignore
-
     - name: Check submodules
       run: |
         echo "=== Checking Git Submodules ==="
         git submodule status
         echo ""
         echo "=== libdatachannel exists: ==="
-        dir deps\libdatachannel\
+        if (Test-Path deps\libdatachannel) { echo "✓ Found" } else { echo "✗ Not found" }
         echo ""
         echo "=== nlohmann-json exists: ==="
-        dir deps\nlohmann-json\
+        if (Test-Path deps\nlohmann-json) { echo "✓ Found" } else { echo "✗ Not found" }
         echo ""
         echo "=== googletest exists: ==="
-        dir deps\googletest\
-      continue-on-error: true
+        if (Test-Path deps\googletest) { echo "✓ Found" } else { echo "✗ Not found" }
+
+    - name: Configure CMake
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DBUILD_LIBDATACHANNEL=ON `
+          -DBUILD_TESTING=ON
+
+    - name: Build dependencies
+      run: |
+        cmake --build build --config Release --target datachannel-static
+
+    - name: Build test framework
+      run: |
+        cmake --build build --config Release --target gtest
+        cmake --build build --config Release --target gtest_main
+        cmake --build build --config Release --target gmock
+
+    - name: Build tests
+      run: |
+        cmake --build build --config Release --target sample_test
+
+    - name: Upload test binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-test-binaries
+        path: |
+          build/tests/unit/Release/sample_test.exe
+          build/Testing/
+        retention-days: 1
 
     - name: Upload build logs
       if: always()
@@ -154,7 +157,7 @@ jobs:
         if-no-files-found: ignore
 
   build-macos:
-    name: Build on macOS
+    name: Build (macOS)
     runs-on: macos-latest
 
     steps:
@@ -167,51 +170,51 @@ jobs:
       run: |
         brew install cmake ninja pkg-config openssl
 
-    - name: Configure CMake (Dependencies Only)
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_LIBDATACHANNEL=ON \
-          -DBUILD_TESTING=ON
-      continue-on-error: true
-
-    - name: Build Dependencies
-      run: |
-        cd build
-        ninja datachannel-static || true
-        ninja nlohmann_json || true
-      continue-on-error: true
-
-    - name: Build and Run Tests
-      run: |
-        cd build
-        ninja gtest gtest_main gmock || true
-        ninja sample_test || true
-        ctest --output-on-failure || true
-      continue-on-error: true
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-test-results
-        path: |
-          build/Testing/**/*.xml
-        if-no-files-found: ignore
-
     - name: Check submodules
       run: |
         echo "=== Checking Git Submodules ==="
         git submodule status
         echo ""
         echo "=== libdatachannel exists: ==="
-        ls -la deps/libdatachannel/ || echo "libdatachannel not found"
+        test -d deps/libdatachannel && echo "✓ Found" || echo "✗ Not found"
         echo ""
         echo "=== nlohmann-json exists: ==="
-        ls -la deps/nlohmann-json/ || echo "nlohmann-json not found"
+        test -d deps/nlohmann-json && echo "✓ Found" || echo "✗ Not found"
         echo ""
         echo "=== googletest exists: ==="
-        ls -la deps/googletest/ || echo "googletest not found"
+        test -d deps/googletest && echo "✓ Found" || echo "✗ Not found"
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=ON
+
+    - name: Build dependencies
+      run: |
+        cd build
+        ninja datachannel-static
+        ninja nlohmann_json
+
+    - name: Build test framework
+      run: |
+        cd build
+        ninja gtest gtest_main gmock
+
+    - name: Build tests
+      run: |
+        cd build
+        ninja sample_test
+
+    - name: Upload test binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-test-binaries
+        path: |
+          build/tests/unit/sample_test
+          build/Testing/
+        retention-days: 1
 
     - name: Upload build logs
       if: always()
@@ -223,23 +226,142 @@ jobs:
           build/CMakeFiles/CMakeError.log
         if-no-files-found: ignore
 
-  summary:
-    name: Build Summary
+  # ============================================================================
+  # Test Jobs - Execute tests using built binaries
+  # ============================================================================
+
+  test-linux:
+    name: Test (Linux)
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows, build-macos]
+    needs: build-linux
+
+    steps:
+    - name: Download test binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: linux-test-binaries
+        path: build
+
+    - name: Set executable permissions
+      run: |
+        chmod +x build/tests/unit/sample_test
+
+    - name: Run tests
+      run: |
+        cd build
+        ./tests/unit/sample_test --gtest_output=xml:test-results.xml
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-test-results
+        path: |
+          build/test-results.xml
+          build/Testing/**/*.xml
+        if-no-files-found: ignore
+
+  test-windows:
+    name: Test (Windows)
+    runs-on: windows-latest
+    needs: build-windows
+
+    steps:
+    - name: Download test binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-test-binaries
+        path: build
+
+    - name: Run tests
+      run: |
+        cd build/tests/unit/Release
+        .\sample_test.exe --gtest_output=xml:test-results.xml
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-test-results
+        path: |
+          build/tests/unit/Release/test-results.xml
+          build/Testing/**/*.xml
+        if-no-files-found: ignore
+
+  test-macos:
+    name: Test (macOS)
+    runs-on: macos-latest
+    needs: build-macos
+
+    steps:
+    - name: Download test binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-test-binaries
+        path: build
+
+    - name: Set executable permissions
+      run: |
+        chmod +x build/tests/unit/sample_test
+
+    - name: Run tests
+      run: |
+        cd build
+        ./tests/unit/sample_test --gtest_output=xml:test-results.xml
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-test-results
+        path: |
+          build/test-results.xml
+          build/Testing/**/*.xml
+        if-no-files-found: ignore
+
+  # ============================================================================
+  # Summary Job - Aggregate results
+  # ============================================================================
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-windows, build-macos, test-linux, test-windows, test-macos]
     if: always()
 
     steps:
-    - name: Check build results
+    - name: Check results
       run: |
-        echo "=== CI/CD Pipeline Summary ==="
-        echo "Linux Build: ${{ needs.build-linux.result }}"
-        echo "Windows Build: ${{ needs.build-windows.result }}"
-        echo "macOS Build: ${{ needs.build-macos.result }}"
+        echo "# CI/CD Pipeline Summary"
         echo ""
-        echo "Note: Full OBS plugin build requires OBS Studio SDK"
-        echo "This workflow validates:"
-        echo "  - Submodule initialization"
-        echo "  - Dependency compilation (libdatachannel, nlohmann-json, googletest)"
-        echo "  - Cross-platform CMake configuration"
-        echo "  - Unit test compilation and execution"
+        echo "## Build Results"
+        echo "- Linux:   ${{ needs.build-linux.result }}"
+        echo "- Windows: ${{ needs.build-windows.result }}"
+        echo "- macOS:   ${{ needs.build-macos.result }}"
+        echo ""
+        echo "## Test Results"
+        echo "- Linux:   ${{ needs.test-linux.result }}"
+        echo "- Windows: ${{ needs.test-windows.result }}"
+        echo "- macOS:   ${{ needs.test-macos.result }}"
+        echo ""
+        echo "## Notes"
+        echo "- Full OBS plugin build requires OBS Studio SDK"
+        echo "- This workflow validates:"
+        echo "  ✓ Submodule initialization"
+        echo "  ✓ Dependency compilation (libdatachannel, nlohmann-json, googletest)"
+        echo "  ✓ Cross-platform CMake configuration"
+        echo "  ✓ Unit test compilation and execution"
+        echo ""
+
+        # Fail the summary job if any build or test failed
+        if [[ "${{ needs.build-linux.result }}" != "success" ]] || \
+           [[ "${{ needs.build-windows.result }}" != "success" ]] || \
+           [[ "${{ needs.build-macos.result }}" != "success" ]] || \
+           [[ "${{ needs.test-linux.result }}" != "success" ]] || \
+           [[ "${{ needs.test-windows.result }}" != "success" ]] || \
+           [[ "${{ needs.test-macos.result }}" != "success" ]]; then
+          echo "❌ Some jobs failed"
+          exit 1
+        else
+          echo "✅ All jobs passed"
+        fi
