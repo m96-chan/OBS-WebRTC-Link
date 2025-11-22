@@ -92,7 +92,16 @@ jobs:
                 "ENABLE_WEBSOCKET": false,
                 "ENABLE_SCRIPTING": false,
                 "ENABLE_UI": false,
-                "BUILD_TESTS": false
+                "BUILD_TESTS": false,
+                "ENABLE_PLUGINS": false,
+                "ENABLE_AJA": false,
+                "ENABLE_ALSA": false,
+                "ENABLE_JACK": false,
+                "ENABLE_PIPEWIRE": false,
+                "ENABLE_PULSEAUDIO": false,
+                "ENABLE_V4L2": false,
+                "ENABLE_VLC": false,
+                "ENABLE_WAYLAND": false
               }
             }
           ]
