@@ -48,7 +48,7 @@ using WHIPIceCandidateCallback =
  * @brief Configuration for WHIPClient
  */
 struct WHIPConfig {
-    std::string url;  // WHIP server URL (e.g., https://sfu.livekit.cloud/whip)
+    std::string url;          // WHIP server URL (e.g., https://sfu.livekit.cloud/whip)
     std::string bearerToken;  // Optional bearer token for authentication
 
     // Event callbacks

@@ -22,7 +22,8 @@ using json = nlohmann::json;
 class WHEPClient::Impl {
 public:
     explicit Impl(const WHEPConfig& config)
-        : config_(config), connected_(false) {
+        : config_(config)
+        , connected_(false) {
         // Validate configuration
         if (config_.url.empty()) {
             throw std::invalid_argument("WHEP URL cannot be empty");
@@ -70,9 +71,11 @@ public:
 
         if (response.statusCode < 200 || response.statusCode >= 300) {
             if (config_.onError) {
-                config_.onError("WHEP server returned error: " + std::to_string(response.statusCode));
+                config_.onError("WHEP server returned error: " +
+                                std::to_string(response.statusCode));
             }
-            throw std::runtime_error("WHEP server returned error: " + std::to_string(response.statusCode));
+            throw std::runtime_error("WHEP server returned error: " +
+                                     std::to_string(response.statusCode));
         }
 
         // Extract Location header for resource URL
@@ -99,7 +102,8 @@ public:
             throw std::runtime_error("No resource URL available");
         }
 
-        // Prepare ICE candidate in Trickle ICE format (application/trickle-ice-sdpfrag)
+        // Prepare ICE candidate in Trickle ICE format
+        // (application/trickle-ice-sdpfrag)
         std::string iceSdpFrag = "a=" + candidate;
 
         HTTPRequest request;
@@ -118,7 +122,8 @@ public:
 
         if (response.statusCode < 200 || response.statusCode >= 300) {
             if (config_.onError) {
-                config_.onError("Failed to send ICE candidate: " + std::to_string(response.statusCode));
+                config_.onError("Failed to send ICE candidate: " +
+                                std::to_string(response.statusCode));
             }
             throw std::runtime_error("Failed to send ICE candidate");
         }
@@ -142,7 +147,8 @@ public:
                 sendHTTPDelete(resourceUrl_, request);
             } catch (const std::exception& e) {
                 if (config_.onError) {
-                    config_.onError("Error during disconnect: " + std::string(e.what()));
+                    config_.onError("Error during disconnect: " +
+                                    std::string(e.what()));
                 }
             }
         }
@@ -162,7 +168,8 @@ public:
 private:
     /**
      * @brief Send HTTP POST request
-     * This is a stub implementation. In production, use a proper HTTP client library like libcurl.
+     * This is a stub implementation. In production, use a proper HTTP client
+     * library like libcurl.
      */
     HTTPResponse sendHTTPPost(const std::string& url, const HTTPRequest& request) {
         // Stub implementation for testing
@@ -171,7 +178,8 @@ private:
 
         // Check for invalid token in stub implementation
         auto authIt = request.headers.find("Authorization");
-        if (authIt != request.headers.end() && authIt->second.find("invalid-token") != std::string::npos) {
+        if (authIt != request.headers.end() &&
+            authIt->second.find("invalid-token") != std::string::npos) {
             response.statusCode = 401;
             return response;
         }
@@ -179,14 +187,16 @@ private:
         response.statusCode = 201;
         response.headers["Location"] = url + "/resource/123";
         response.headers["Content-Type"] = "application/sdp";
-        response.body = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";  // Mock SDP answer
+        response.body =
+            "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";  // Mock SDP answer
         return response;
     }
 
     /**
      * @brief Send HTTP PATCH request
      */
-    HTTPResponse sendHTTPPatch(const std::string& url, const HTTPRequest& request) {
+    HTTPResponse sendHTTPPatch(const std::string& url,
+                               const HTTPRequest& request) {
         // Stub implementation for testing
         HTTPResponse response;
         response.statusCode = 204;  // No Content
@@ -196,7 +206,8 @@ private:
     /**
      * @brief Send HTTP DELETE request
      */
-    HTTPResponse sendHTTPDelete(const std::string& url, const HTTPRequest& request) {
+    HTTPResponse sendHTTPDelete(const std::string& url,
+                                const HTTPRequest& request) {
         // Stub implementation for testing
         HTTPResponse response;
         response.statusCode = 200;

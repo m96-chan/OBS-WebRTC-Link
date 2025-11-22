@@ -36,7 +36,7 @@ using WHEPIceCandidateCallback =
  * @brief Configuration for WHEPClient
  */
 struct WHEPConfig {
-    std::string url;  // WHEP server URL (e.g., https://sfu.livekit.cloud/whep)
+    std::string url;          // WHEP server URL (e.g., https://sfu.livekit.cloud/whep)
     std::string bearerToken;  // Optional bearer token for authentication
 
     // Event callbacks
