@@ -190,10 +190,11 @@ jobs:
         cd build
         ninja obs-webrtc-link
 
-    - name: Build tests
+    - name: Build all tests
       run: |
         cd build
-        ninja sample_test
+        # Build all test targets automatically
+        cmake --build . --target all || ninja
 
     - name: Upload plugin binary
       uses: actions/upload-artifact@v4
@@ -207,7 +208,7 @@ jobs:
       with:
         name: linux-test-binaries
         path: |
-          build/tests/unit/sample_test
+          build/tests/unit/*_test
           build/Testing/
         retention-days: 1
 
@@ -266,16 +267,17 @@ jobs:
         cmake --build build --config Release --target gtest_main
         cmake --build build --config Release --target gmock
 
-    - name: Build tests
+    - name: Build all tests
       run: |
-        cmake --build build --config Release --target sample_test
+        # Build all test targets automatically
+        cmake --build build --config Release
 
     - name: Upload test binaries
       uses: actions/upload-artifact@v4
       with:
         name: windows-test-binaries
         path: |
-          build/tests/unit/Release/sample_test.exe
+          build/tests/unit/Release/*_test.exe
           build/Testing/
         retention-days: 1
 
@@ -336,17 +338,18 @@ jobs:
         cd build
         ninja gtest gtest_main gmock || ninja gtest || echo "gtest built"
 
-    - name: Build tests
+    - name: Build all tests
       run: |
         cd build
-        ninja sample_test
+        # Build all test targets automatically
+        cmake --build . || ninja
 
     - name: Upload test binaries
       uses: actions/upload-artifact@v4
       with:
         name: macos-test-binaries
         path: |
-          build/tests/unit/sample_test
+          build/tests/unit/*_test
           build/Testing/
         retention-days: 1
 
@@ -378,12 +381,12 @@ jobs:
 
     - name: Set executable permissions
       run: |
-        chmod +x build/tests/unit/sample_test
+        chmod +x build/tests/unit/*_test
 
-    - name: Run tests
+    - name: Run all tests with CTest
       run: |
         cd build
-        ./tests/unit/sample_test --gtest_output=xml:test-results.xml
+        ctest --output-on-failure --verbose
 
     - name: Upload test results
       if: always()
@@ -407,10 +410,10 @@ jobs:
         name: windows-test-binaries
         path: build
 
-    - name: Run tests
+    - name: Run all tests with CTest
       run: |
-        cd build/tests/unit/Release
-        .\sample_test.exe --gtest_output=xml:test-results.xml
+        cd build
+        ctest -C Release --output-on-failure --verbose
 
     - name: Upload test results
       if: always()
@@ -436,12 +439,12 @@ jobs:
 
     - name: Set executable permissions
       run: |
-        chmod +x build/tests/unit/sample_test
+        chmod +x build/tests/unit/*_test
 
-    - name: Run tests
+    - name: Run all tests with CTest
       run: |
         cd build
-        ./tests/unit/sample_test --gtest_output=xml:test-results.xml
+        ctest --output-on-failure --verbose
 
     - name: Upload test results
       if: always()
