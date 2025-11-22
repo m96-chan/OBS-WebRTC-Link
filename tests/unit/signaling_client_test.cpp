@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "core/signaling-client.hpp"
+#include <nlohmann/json.hpp>
 #include <thread>
 #include <chrono>
 
@@ -184,10 +185,10 @@ TEST_F(SignalingClientTest, ReceiveOfferMessage) {
 
     // Simulate receiving an offer message
     const std::string offerSdp = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
-    const std::string message = R"({
-        "type": "offer",
-        "sdp": ")" + offerSdp + R"("
-    })";
+    nlohmann::json json;
+    json["type"] = "offer";
+    json["sdp"] = offerSdp;
+    const std::string message = json.dump();
 
     // Simulate message reception (in real implementation, this would come from WebSocket)
     client->handleMessage(message);
@@ -205,10 +206,10 @@ TEST_F(SignalingClientTest, ReceiveAnswerMessage) {
 
     // Simulate receiving an answer message
     const std::string answerSdp = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";
-    const std::string message = R"({
-        "type": "answer",
-        "sdp": ")" + answerSdp + R"("
-    })";
+    nlohmann::json json;
+    json["type"] = "answer";
+    json["sdp"] = answerSdp;
+    const std::string message = json.dump();
 
     client->handleMessage(message);
 
@@ -395,10 +396,10 @@ TEST_F(SignalingClientTest, ReceiveOfferWithSpecialCharacters) {
     client->connect();
 
     const std::string offerSdp = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\na=test:value with spaces\r\n";
-    const std::string message = R"({
-        "type": "offer",
-        "sdp": ")" + offerSdp + R"("
-    })";
+    nlohmann::json json;
+    json["type"] = "offer";
+    json["sdp"] = offerSdp;
+    const std::string message = json.dump();
 
     client->handleMessage(message);
     EXPECT_EQ(receivedOffer_, offerSdp);
@@ -412,10 +413,10 @@ TEST_F(SignalingClientTest, ReceiveAnswerWithMultilineSDP) {
     client->connect();
 
     const std::string answerSdp = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\ns=-\r\nt=0 0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n";
-    const std::string message = R"({
-        "type": "answer",
-        "sdp": ")" + answerSdp + R"("
-    })";
+    nlohmann::json json;
+    json["type"] = "answer";
+    json["sdp"] = answerSdp;
+    const std::string message = json.dump();
 
     client->handleMessage(message);
     EXPECT_EQ(receivedAnswer_, answerSdp);
@@ -510,17 +511,17 @@ TEST_F(SignalingClientTest, ConcurrentMessageHandling) {
     client->connect();
 
     const std::string offerSdp = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
-    const std::string message1 = R"({
-        "type": "offer",
-        "sdp": ")" + offerSdp + R"("
-    })";
+    nlohmann::json json1;
+    json1["type"] = "offer";
+    json1["sdp"] = offerSdp;
+    const std::string message1 = json1.dump();
 
     const std::string candidate = "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host";
-    const std::string message2 = R"({
-        "type": "candidate",
-        "candidate": ")" + candidate + R"(",
-        "mid": "0"
-    })";
+    nlohmann::json json2;
+    json2["type"] = "candidate";
+    json2["candidate"] = candidate;
+    json2["mid"] = "0";
+    const std::string message2 = json2.dump();
 
     // Handle multiple messages concurrently
     EXPECT_NO_THROW({
