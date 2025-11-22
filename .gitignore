@@ -102,6 +102,9 @@ deps/*/cmake-build-*/
 *.gcov
 coverage/
 
+# CTest temporary files
+Testing/
+
 # Documentation build
 docs/_build/
 docs/html/
