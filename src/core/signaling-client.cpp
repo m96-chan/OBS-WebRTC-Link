@@ -116,6 +116,10 @@ public:
     void sendOffer(const std::string& sdp) {
         std::lock_guard<std::mutex> lock(mutex_);
 
+        if (sdp.empty()) {
+            throw std::invalid_argument("SDP offer cannot be empty");
+        }
+
         if (!transport_ || !transport_->isConnected()) {
             throw std::runtime_error("Not connected to signaling server");
         }
@@ -137,6 +141,10 @@ public:
     void sendAnswer(const std::string& sdp) {
         std::lock_guard<std::mutex> lock(mutex_);
 
+        if (sdp.empty()) {
+            throw std::invalid_argument("SDP answer cannot be empty");
+        }
+
         if (!transport_ || !transport_->isConnected()) {
             throw std::runtime_error("Not connected to signaling server");
         }
@@ -157,6 +165,10 @@ public:
 
     void sendIceCandidate(const std::string& candidate, const std::string& mid) {
         std::lock_guard<std::mutex> lock(mutex_);
+
+        if (candidate.empty()) {
+            throw std::invalid_argument("ICE candidate cannot be empty");
+        }
 
         if (!transport_ || !transport_->isConnected()) {
             throw std::runtime_error("Not connected to signaling server");
@@ -193,15 +205,33 @@ public:
             std::string type = json["type"];
 
             if (type == "offer") {
-                if (json.contains("sdp") && config_.onOffer) {
+                if (!json.contains("sdp")) {
+                    if (config_.onError) {
+                        config_.onError("Received offer message without 'sdp' field");
+                    }
+                    return;
+                }
+                if (config_.onOffer) {
                     config_.onOffer(json["sdp"]);
                 }
             } else if (type == "answer") {
-                if (json.contains("sdp") && config_.onAnswer) {
+                if (!json.contains("sdp")) {
+                    if (config_.onError) {
+                        config_.onError("Received answer message without 'sdp' field");
+                    }
+                    return;
+                }
+                if (config_.onAnswer) {
                     config_.onAnswer(json["sdp"]);
                 }
             } else if (type == "candidate") {
-                if (json.contains("candidate") && json.contains("mid") && config_.onIceCandidate) {
+                if (!json.contains("candidate") || !json.contains("mid")) {
+                    if (config_.onError) {
+                        config_.onError("Received candidate message without 'candidate' or 'mid' field");
+                    }
+                    return;
+                }
+                if (config_.onIceCandidate) {
                     config_.onIceCandidate(json["candidate"], json["mid"]);
                 }
             } else {
