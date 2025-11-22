@@ -14,11 +14,11 @@ target_link_libraries(sample_test PRIVATE
 )
 
 # Discover tests
-# On Windows, defer discovery to POST_BUILD to avoid runtime dependency issues during build
+# On Windows, use gtest_add_tests to avoid DLL path issues during discovery
 if(WIN32)
-    gtest_discover_tests(sample_test
-        DISCOVERY_MODE POST_BUILD
-    )
+    # Manual test registration - simpler and more reliable on Windows
+    gtest_add_tests(TARGET sample_test)
 else()
+    # Use automatic discovery on Linux/macOS
     gtest_discover_tests(sample_test)
 endif()

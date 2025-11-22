@@ -62,7 +62,8 @@ jobs:
           libasound2-dev \
           libpulse-dev \
           libwayland-dev \
-          libdrm-dev
+          libdrm-dev \
+          uthash-dev
 
     - name: Build OBS Studio SDK
       if: steps.cache-obs.outputs.cache-hit != 'true'

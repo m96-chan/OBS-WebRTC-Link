@@ -115,6 +115,7 @@ if(BUILD_TESTING)
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
         set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
         set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
         add_subdirectory(deps/googletest EXCLUDE_FROM_ALL)
 
