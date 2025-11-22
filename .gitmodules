@@ -6,3 +6,6 @@
 [submodule "deps/nlohmann-json"]
 	path = deps/nlohmann-json
 	url = https://github.com/nlohmann/json.git
+[submodule "deps/googletest"]
+	path = deps/googletest
+	url = https://github.com/google/googletest.git
