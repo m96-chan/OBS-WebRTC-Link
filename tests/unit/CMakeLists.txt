@@ -45,3 +45,26 @@ if(WIN32)
 else()
     gtest_discover_tests(peer_connection_test)
 endif()
+
+# SignalingClient test executable
+add_executable(signaling_client_test
+    signaling_client_test.cpp
+)
+
+target_include_directories(signaling_client_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(signaling_client_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover signaling client tests
+if(WIN32)
+    gtest_add_tests(TARGET signaling_client_test)
+else()
+    gtest_discover_tests(signaling_client_test)
+endif()
