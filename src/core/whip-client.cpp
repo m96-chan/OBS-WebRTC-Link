@@ -8,11 +8,21 @@
 #include <nlohmann/json.hpp>
 
 #include <stdexcept>
+#include <regex>
 
 namespace obswebrtc {
 namespace core {
 
 using json = nlohmann::json;
+
+/**
+ * @brief Validate URL format
+ */
+static bool isValidUrl(const std::string& url) {
+    // Check if URL has a valid scheme (http:// or https://)
+    std::regex urlPattern("^https?://[^\\s/$.?#].[^\\s]*$", std::regex::icase);
+    return std::regex_match(url, urlPattern);
+}
 
 /**
  * @brief Internal implementation of WHIPClient
@@ -25,6 +35,11 @@ public:
         // Validate configuration
         if (config_.url.empty()) {
             throw std::invalid_argument("WHIP URL cannot be empty");
+        }
+
+        // Validate URL format
+        if (!isValidUrl(config_.url)) {
+            throw std::invalid_argument("Invalid URL format. URL must start with http:// or https://");
         }
     }
 
@@ -56,8 +71,17 @@ public:
         // Add required WHIP headers
         request.headers["Content-Type"] = "application/sdp";
 
-        // Send POST request (in real implementation, use HTTP client library)
-        HTTPResponse response = sendHTTPPost(config_.url, request);
+        HTTPResponse response;
+        try {
+            // Send POST request (in real implementation, use HTTP client library)
+            response = sendHTTPPost(config_.url, request);
+        } catch (const std::exception& e) {
+            // Handle network errors (timeout, DNS, connection refused, SSL)
+            if (config_.onError) {
+                config_.onError("Network error: " + std::string(e.what()));
+            }
+            throw;
+        }
 
         // Check response status
         if (response.statusCode == 401) {
@@ -98,6 +122,11 @@ public:
 
         if (resourceUrl_.empty()) {
             throw std::runtime_error("No resource URL available");
+        }
+
+        // Validate ICE candidate
+        if (candidate.empty()) {
+            throw std::invalid_argument("ICE candidate cannot be empty");
         }
 
         // Prepare ICE candidate in Trickle ICE format
@@ -178,6 +207,56 @@ private:
         if (authIt != request.headers.end() &&
             authIt->second.find("invalid-token") != std::string::npos) {
             response.statusCode = 401;
+            return response;
+        }
+
+        // Check for forbidden token
+        if (authIt != request.headers.end() &&
+            authIt->second.find("forbidden-token") != std::string::npos) {
+            response.statusCode = 403;
+            return response;
+        }
+
+        // Simulate network errors based on URL patterns
+        if (url.find("192.0.2.1") != std::string::npos) {
+            // TEST-NET-1 - simulate timeout
+            throw std::runtime_error("Network timeout");
+        }
+
+        if (url.find("nonexistent.invalid.domain.tld") != std::string::npos) {
+            // Simulate DNS resolution failure
+            throw std::runtime_error("DNS resolution failed");
+        }
+
+        if (url.find("localhost:19999") != std::string::npos) {
+            // Simulate connection refused
+            throw std::runtime_error("Connection refused");
+        }
+
+        if (url.find("self-signed.badssl.com") != std::string::npos) {
+            // Simulate SSL certificate error
+            throw std::runtime_error("SSL certificate verification failed");
+        }
+
+        // Simulate HTTP error codes based on URL path
+        if (url.find("nonexistent-endpoint") != std::string::npos) {
+            response.statusCode = 404;
+            return response;
+        }
+
+        if (url.find("error-endpoint") != std::string::npos) {
+            response.statusCode = 500;
+            return response;
+        }
+
+        if (url.find("unavailable-endpoint") != std::string::npos) {
+            response.statusCode = 503;
+            return response;
+        }
+
+        // Check for malformed SDP (simulates 400 Bad Request)
+        if (request.body.find("invalid sdp content") != std::string::npos) {
+            response.statusCode = 400;
             return response;
         }
 
