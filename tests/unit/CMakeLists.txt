@@ -68,3 +68,49 @@ if(WIN32)
 else()
     gtest_discover_tests(signaling_client_test)
 endif()
+
+# WHIPClient test executable
+add_executable(whip_client_test
+    whip_client_test.cpp
+)
+
+target_include_directories(whip_client_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(whip_client_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover WHIP client tests
+if(WIN32)
+    gtest_add_tests(TARGET whip_client_test)
+else()
+    gtest_discover_tests(whip_client_test)
+endif()
+
+# WHEPClient test executable
+add_executable(whep_client_test
+    whep_client_test.cpp
+)
+
+target_include_directories(whep_client_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(whep_client_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover WHEP client tests
+if(WIN32)
+    gtest_add_tests(TARGET whep_client_test)
+else()
+    gtest_discover_tests(whep_client_test)
+endif()
