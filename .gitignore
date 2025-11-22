@@ -1,0 +1,107 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+*.cmake.in
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# CLion
+.idea/
+cmake-build-debug/
+cmake-build-release/
+
+# Compiled Object files
+*.o
+*.obj
+*.lo
+*.slo
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.a
+*.lib
+*.lai
+*.la
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug files
+*.dSYM/
+*.pdb
+*.ilk
+
+# Logs
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+*~
+*.swp
+*.swo
+*.tmp
+*.bak
+*.cache
+
+# Dependencies (will be added as submodules)
+deps/*/
+
+# Package files
+*.zip
+*.tar.gz
+*.tar.bz2
+*.7z
+
+# IDE specific
+*.cbp
+*.layout
+*.depend
+*.workspace
+
+# Test coverage
+*.gcda
+*.gcno
+*.gcov
+coverage/
+
+# Documentation build
+docs/_build/
+docs/html/
+docs/latex/
