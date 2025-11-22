@@ -143,6 +143,19 @@ cmake --install . --config Release
 - `OBS_INCLUDE_SEARCH_PATH` - Path to OBS Studio include directory
 - `OBS_LIB_SEARCH_PATH` - Path to OBS Studio library directory
 - `BUILD_LIBDATACHANNEL` - Build libdatachannel from source (default: ON)
+- `LIBDATACHANNEL_DIR` - Custom path to libdatachannel installation (optional)
+
+### Advanced: Using System Libraries
+
+If you have libdatachannel installed system-wide, you can use it instead of submodules:
+
+```bash
+cmake .. -DBUILD_LIBDATACHANNEL=OFF \
+         -DOBS_INCLUDE_SEARCH_PATH="path/to/obs-studio/include" \
+         -DOBS_LIB_SEARCH_PATH="path/to/obs-studio/lib"
+```
+
+The project includes a custom CMake Find module (`cmake/FindLibDataChannel.cmake`) that automatically locates the library. See [cmake/README.md](cmake/README.md) for details.
 
 ### Dependency Versions
 
