@@ -183,9 +183,9 @@ static void webrtc_output_stop(void* data_ptr, uint64_t ts) {
 }
 
 /**
- * @brief Receive encoded video packet
+ * @brief Receive encoded packet (both video and audio)
  */
-static void webrtc_output_encoded_video(void* data_ptr, struct encoder_packet* packet) {
+static void webrtc_output_encoded_packet(void* data_ptr, struct encoder_packet* packet) {
     auto* data = static_cast<webrtc_output_data*>(data_ptr);
 
     if (!data->active || !data->webrtc_output) {
@@ -195,40 +195,26 @@ static void webrtc_output_encoded_video(void* data_ptr, struct encoder_packet* p
     try {
         // Convert OBS packet to WebRTC packet
         EncodedPacket webrtc_packet;
-        webrtc_packet.type = PacketType::Video;
+
+        // Determine packet type based on OBS packet type
+        if (packet->type == OBS_ENCODER_VIDEO) {
+            webrtc_packet.type = PacketType::Video;
+            webrtc_packet.keyframe = packet->keyframe;
+        } else if (packet->type == OBS_ENCODER_AUDIO) {
+            webrtc_packet.type = PacketType::Audio;
+            webrtc_packet.keyframe = false;
+        } else {
+            blog(LOG_WARNING, "[WebRTC Output] Unknown packet type: %d", packet->type);
+            return;
+        }
+
         webrtc_packet.data.assign(packet->data, packet->data + packet->size);
         webrtc_packet.timestamp = packet->pts;
-        webrtc_packet.keyframe = packet->keyframe;
 
         // Send packet
         data->webrtc_output->sendPacket(webrtc_packet);
     } catch (const std::exception& e) {
-        blog(LOG_ERROR, "[WebRTC Output] Failed to send video packet: %s", e.what());
-    }
-}
-
-/**
- * @brief Receive encoded audio packet
- */
-static void webrtc_output_encoded_audio(void* data_ptr, struct encoder_packet* packet) {
-    auto* data = static_cast<webrtc_output_data*>(data_ptr);
-
-    if (!data->active || !data->webrtc_output) {
-        return;
-    }
-
-    try {
-        // Convert OBS packet to WebRTC packet
-        EncodedPacket webrtc_packet;
-        webrtc_packet.type = PacketType::Audio;
-        webrtc_packet.data.assign(packet->data, packet->data + packet->size);
-        webrtc_packet.timestamp = packet->pts;
-        webrtc_packet.keyframe = false;
-
-        // Send packet
-        data->webrtc_output->sendPacket(webrtc_packet);
-    } catch (const std::exception& e) {
-        blog(LOG_ERROR, "[WebRTC Output] Failed to send audio packet: %s", e.what());
+        blog(LOG_ERROR, "[WebRTC Output] Failed to send packet: %s", e.what());
     }
 }
 
@@ -278,43 +264,23 @@ static obs_properties_t* webrtc_output_properties(void* unused) {
 }
 
 /**
- * @brief OBS output info structure
- */
-struct obs_output_info webrtc_output_info = {
-    .id = "webrtc_output",
-    .flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED,
-    .get_name = webrtc_output_getname,
-    .create = webrtc_output_create,
-    .destroy = webrtc_output_destroy,
-    .start = webrtc_output_start,
-    .stop = webrtc_output_stop,
-    .encoded_packet = nullptr,
-    .encoded_video_codecs = "h264",
-    .encoded_audio_codecs = "opus",
-    .get_defaults = webrtc_output_defaults,
-    .get_properties = webrtc_output_properties,
-    .unused1 = nullptr,
-    .unused2 = nullptr,
-    .unused3 = nullptr,
-    .get_total_bytes = nullptr,
-    .get_dropped_frames = nullptr,
-    .type_data = nullptr,
-    .free_type_data = nullptr,
-    .get_congestion = nullptr,
-    .get_connect_time_ms = nullptr,
-    .encoded_video_codecs_ex = nullptr,
-    .encoded_audio_codecs_ex = nullptr,
-    .raw_video_codecs_ex = nullptr,
-    .raw_audio_codecs_ex = nullptr,
-};
-
-/**
  * @brief Register WebRTC output with OBS
  */
 void register_webrtc_output() {
-    // Set the encoded packet callbacks
-    webrtc_output_info.encoded_video = webrtc_output_encoded_video;
-    webrtc_output_info.encoded_audio = webrtc_output_encoded_audio;
+    struct obs_output_info webrtc_output_info = {};
+
+    webrtc_output_info.id = "webrtc_output";
+    webrtc_output_info.flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED;
+    webrtc_output_info.get_name = webrtc_output_getname;
+    webrtc_output_info.create = webrtc_output_create;
+    webrtc_output_info.destroy = webrtc_output_destroy;
+    webrtc_output_info.start = webrtc_output_start;
+    webrtc_output_info.stop = webrtc_output_stop;
+    webrtc_output_info.encoded_packet = webrtc_output_encoded_packet;
+    webrtc_output_info.encoded_video_codecs = "h264";
+    webrtc_output_info.encoded_audio_codecs = "opus";
+    webrtc_output_info.get_defaults = webrtc_output_defaults;
+    webrtc_output_info.get_properties = webrtc_output_properties;
 
     obs_register_output(&webrtc_output_info);
     blog(LOG_INFO, "[WebRTC Output] Registered WebRTC output plugin");
