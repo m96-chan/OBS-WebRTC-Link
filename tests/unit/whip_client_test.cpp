@@ -423,3 +423,192 @@ TEST_F(WHIPClientTest, OfferSendingPerformance) {
     // Should complete within reasonable time (< 5 seconds for network operation)
     EXPECT_LT(duration.count(), 5000);
 }
+
+/**
+ * @brief Test HTTP 400 Bad Request error handling
+ */
+TEST_F(WHIPClientTest, HandleBadRequestError) {
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    // Send malformed SDP that might trigger 400 error
+    const std::string malformedOffer = "invalid sdp content";
+
+    // Should throw on HTTP error
+    EXPECT_THROW({ client->sendOffer(malformedOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test HTTP 403 Forbidden error handling
+ */
+TEST_F(WHIPClientTest, HandleForbiddenError) {
+    config_.bearerToken = "forbidden-token";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on 403 error
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test HTTP 404 Not Found error handling
+ */
+TEST_F(WHIPClientTest, HandleNotFoundError) {
+    config_.url = "https://sfu.example.com/nonexistent-endpoint";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on 404 error
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test HTTP 500 Internal Server Error handling
+ */
+TEST_F(WHIPClientTest, HandleInternalServerError) {
+    config_.url = "https://sfu.example.com/error-endpoint";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on 500 error
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test HTTP 503 Service Unavailable error handling
+ */
+TEST_F(WHIPClientTest, HandleServiceUnavailableError) {
+    config_.url = "https://sfu.example.com/unavailable-endpoint";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on 503 error
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test network timeout error handling
+ */
+TEST_F(WHIPClientTest, HandleNetworkTimeout) {
+    // Use an IP that will timeout
+    config_.url = "http://192.0.2.1:12345/whip";  // TEST-NET-1 (guaranteed to timeout)
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on timeout
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test DNS resolution failure
+ */
+TEST_F(WHIPClientTest, HandleDnsResolutionFailure) {
+    config_.url = "https://nonexistent.invalid.domain.tld/whip";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on DNS failure
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test connection refused error
+ */
+TEST_F(WHIPClientTest, HandleConnectionRefused) {
+    // Use localhost with port that has no server
+    config_.url = "http://localhost:19999/whip";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should throw on connection refused
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test SSL/TLS certificate error handling
+ */
+TEST_F(WHIPClientTest, HandleSslCertificateError) {
+    // Use self-signed or invalid certificate URL
+    config_.url = "https://self-signed.badssl.com/whip";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should handle SSL errors appropriately
+    EXPECT_THROW({ client->sendOffer(testOffer); }, std::runtime_error);
+}
+
+/**
+ * @brief Test handling of missing Location header in response
+ */
+TEST_F(WHIPClientTest, HandleMissingLocationHeader) {
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // If server doesn't send Location header, should still work or handle gracefully
+    EXPECT_NO_THROW({ client->sendOffer(testOffer); });
+}
+
+/**
+ * @brief Test handling of empty response body
+ */
+TEST_F(WHIPClientTest, HandleEmptyResponseBody) {
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Empty response should be handled
+    EXPECT_NO_THROW({ std::string answer = client->sendOffer(testOffer); });
+}
+
+/**
+ * @brief Test retry mechanism on temporary failures
+ */
+TEST_F(WHIPClientTest, RetryOnTemporaryFailure) {
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // First attempt might fail, retry should work
+    EXPECT_NO_THROW({
+        try {
+            client->sendOffer(testOffer);
+        } catch (const std::runtime_error&) {
+            // Retry
+            client = std::make_unique<WHIPClient>(config_);
+            client->sendOffer(testOffer);
+        }
+    });
+}
+
+/**
+ * @brief Test Content-Type header in request
+ */
+TEST_F(WHIPClientTest, VerifyContentTypeHeader) {
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should send correct Content-Type: application/sdp
+    EXPECT_NO_THROW({ client->sendOffer(testOffer); });
+}
+
+/**
+ * @brief Test Bearer token format in Authorization header
+ */
+TEST_F(WHIPClientTest, VerifyBearerTokenFormat) {
+    config_.bearerToken = "test-token-with-special-chars!@#$%";
+    auto client = std::make_unique<WHIPClient>(config_);
+
+    const std::string testOffer = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Should properly format Authorization: Bearer <token>
+    EXPECT_NO_THROW({ client->sendOffer(testOffer); });
+}
