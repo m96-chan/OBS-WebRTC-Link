@@ -137,3 +137,27 @@ if(WIN32)
 else()
     gtest_discover_tests(p2p_connection_test)
 endif()
+
+# WebRTCOutput test executable
+add_executable(webrtc_output_test
+    webrtc_output_test.cpp
+    ../../src/output/webrtc-output.cpp
+)
+
+target_include_directories(webrtc_output_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(webrtc_output_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover WebRTC output tests
+if(WIN32)
+    gtest_add_tests(TARGET webrtc_output_test)
+else()
+    gtest_discover_tests(webrtc_output_test)
+endif()

@@ -17,6 +17,7 @@
  */
 
 #include <obs-module.h>
+#include "output/obs-webrtc-output.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-webrtc-link", "en-US")
@@ -51,8 +52,10 @@ bool obs_module_load(void)
 	blog(LOG_INFO, "[OBS WebRTC Link] Plugin version %s loaded", PLUGIN_VERSION);
 	blog(LOG_INFO, "[OBS WebRTC Link] Project structure initialized");
 
+	// Register WebRTC Output (Issue #11)
+	register_webrtc_output();
+
 	// TODO: Register WebRTC Source (Issue #12)
-	// TODO: Register WebRTC Output (Issue #11)
 
 	return true;
 }
