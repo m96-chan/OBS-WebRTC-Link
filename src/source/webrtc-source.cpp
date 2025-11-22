@@ -45,7 +45,8 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        if (active_) {
+        // Check if already started (either active or in the process of connecting)
+        if (active_ || whepClient_) {
             return false;
         }
 
@@ -54,6 +55,7 @@ public:
             core::WHEPConfig whepConfig;
             whepConfig.url = config_.serverUrl;
             whepConfig.onConnected = [this]() {
+                active_ = true;
                 setConnectionState(ConnectionState::Connected);
                 // Reset reconnection manager on successful connection
                 if (reconnectionManager_) {
@@ -61,6 +63,7 @@ public:
                 }
             };
             whepConfig.onDisconnected = [this]() {
+                active_ = false;
                 setConnectionState(ConnectionState::Disconnected);
                 // Schedule reconnection on disconnection
                 if (reconnectionManager_ && config_.enableAutoReconnect) {
@@ -78,14 +81,17 @@ public:
                 }
             };
 
+            // Create WHEP client (may throw if URL is invalid)
             whepClient_ = std::make_unique<core::WHEPClient>(whepConfig);
 
             // Start connection
+            // Note: active_ is set to true only when connection is established (in onConnected callback)
+            // not immediately when start() is called
             setConnectionState(ConnectionState::Connecting);
-            active_ = true;
 
             return true;
         } catch (const std::exception& e) {
+            // Ensure active is false on any error (including invalid URL)
             if (config_.errorCallback) {
                 config_.errorCallback(std::string("Failed to start source: ") + e.what());
             }

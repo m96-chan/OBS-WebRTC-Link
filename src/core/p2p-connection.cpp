@@ -126,6 +126,9 @@ public:
                 offerPromise.set_value(sdp);
             });
 
+        // Trigger offer generation by setting local description
+        peerConnection_->setLocalDescription();
+
         // Wait for offer to be generated (without holding mutex)
         auto status = offerFuture.wait_for(std::chrono::seconds(5));
         if (status == std::future_status::timeout) {
@@ -199,6 +202,9 @@ public:
 
                 answerPromise.set_value(sdp);
             });
+
+        // Trigger answer generation by setting local description
+        peerConnection_->setLocalDescription();
 
         // Wait for answer to be generated (without holding mutex)
         auto status = answerFuture.wait_for(std::chrono::seconds(5));
