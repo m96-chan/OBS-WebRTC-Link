@@ -74,6 +74,12 @@ struct WebRTCSourceConfig {
     std::function<void(const AudioFrame&)> audioCallback;
     std::function<void(const std::string&)> errorCallback;
     std::function<void(ConnectionState)> stateCallback;
+
+    // Reconnection settings
+    bool enableAutoReconnect = true;
+    int maxReconnectRetries = 5;
+    int reconnectInitialDelayMs = 1000;
+    int reconnectMaxDelayMs = 30000;
 };
 
 /**

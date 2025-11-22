@@ -185,3 +185,26 @@ if(WIN32)
 else()
     gtest_discover_tests(webrtc_source_test)
 endif()
+
+# ReconnectionManager test executable
+add_executable(reconnection_manager_test
+    reconnection_manager_test.cpp
+    ../../src/core/reconnection-manager.cpp
+)
+
+target_include_directories(reconnection_manager_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(reconnection_manager_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+)
+
+# Discover Reconnection Manager tests
+if(WIN32)
+    gtest_add_tests(TARGET reconnection_manager_test)
+else()
+    gtest_discover_tests(reconnection_manager_test)
+endif()
