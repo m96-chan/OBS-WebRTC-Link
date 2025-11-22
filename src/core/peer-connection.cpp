@@ -69,7 +69,10 @@ public:
                 handleLocalCandidate(candidate);
             });
 
-            // This will trigger the onLocalDescription callback
+            // Create a data channel to trigger negotiation
+            // libdatachannel requires creating a data channel or media track to initiate SDP generation
+            auto dc = peerConnection_->createDataChannel("negotiation");
+
             log(LogLevel::Debug, "Offer creation initiated");
         } catch (const std::exception& e) {
             log(LogLevel::Error, std::string("Failed to create offer: ") + e.what());
@@ -95,6 +98,13 @@ public:
             // Gather local candidates
             peerConnection_->onLocalCandidate([this](rtc::Candidate candidate) {
                 handleLocalCandidate(candidate);
+            });
+
+            // Set up data channel handler to accept incoming data channels from remote offer
+            // This triggers the answer generation in libdatachannel
+            peerConnection_->onDataChannel([](std::shared_ptr<rtc::DataChannel> dc) {
+                // Accept the data channel from the remote peer
+                // The answer will be generated automatically
             });
 
             log(LogLevel::Debug, "Answer creation initiated");
