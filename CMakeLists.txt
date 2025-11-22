@@ -138,6 +138,7 @@ set(CORE_SOURCES
     src/core/signaling-client.cpp
     src/core/whip-client.cpp
     src/core/whep-client.cpp
+    src/core/p2p-connection.cpp
 )
 
 add_library(obs-webrtc-core STATIC ${CORE_SOURCES})
