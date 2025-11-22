@@ -32,7 +32,7 @@ TEST(SampleTest, MultipleAssertions) {
     std::string plugin_name = "obs-webrtc-link";
 
     EXPECT_FALSE(plugin_name.empty());
-    EXPECT_EQ(plugin_name.length(), 16);
+    EXPECT_EQ(plugin_name.length(), 15);  // "obs-webrtc-link" is 15 characters
     EXPECT_EQ(plugin_name.find("webrtc"), 4);
 }
 

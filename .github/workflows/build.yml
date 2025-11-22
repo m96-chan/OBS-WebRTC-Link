@@ -63,7 +63,8 @@ jobs:
           libpulse-dev \
           libwayland-dev \
           libdrm-dev \
-          uthash-dev
+          uthash-dev \
+          libxkbcommon-dev
 
     - name: Build OBS Studio SDK
       if: steps.cache-obs.outputs.cache-hit != 'true'
