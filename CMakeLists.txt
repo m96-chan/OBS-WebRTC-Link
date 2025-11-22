@@ -153,6 +153,12 @@ target_link_libraries(obs-webrtc-core PUBLIC
     nlohmann_json::nlohmann_json
 )
 
+# Enable position-independent code for static library
+# This is required because the static library will be linked into a shared library (plugin)
+set_target_properties(obs-webrtc-core PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+)
+
 # Plugin sources and build (skip if building tests only)
 if(NOT BUILD_TESTS_ONLY)
     set(PLUGIN_SOURCES
