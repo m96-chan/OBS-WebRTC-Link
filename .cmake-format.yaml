@@ -1,0 +1,85 @@
+# CMake-format configuration for OBS-WebRTC-Link
+# https://cmake-format.readthedocs.io/
+
+# Basic formatting
+line_width: 100
+tab_size: 4
+use_tabchars: false
+max_subgroups_hwrap: 2
+max_pargs_hwrap: 6
+
+# Parsing
+parse:
+  additional_commands:
+    foo:
+      flags:
+      - BAR
+      - BAZ
+      kwargs:
+        HEADERS: '*'
+        SOURCES: '*'
+        DEPENDS: '*'
+
+# Formatting
+format:
+  # Disable formatting for specific patterns
+  disable: false
+
+  # Line ending style
+  line_ending: unix
+
+  # Indentation
+  dangle_parens: true
+  dangle_align: prefix
+  min_prefix_chars: 4
+  max_prefix_chars: 10
+  max_lines_hwrap: 2
+
+  # Function call formatting
+  separate_ctrl_name_with_space: false
+  separate_fn_name_with_space: false
+
+  # Conditional formatting
+  max_rows_cmdline: 2
+
+  # Lists
+  algorithm_order: [0, 1, 2, 3, 4]
+
+  # Comments
+  enable_markup: true
+  first_comment_is_literal: false
+  literal_comment_pattern: null
+
+  # Misc
+  fence_pattern: ^\s*([`~]{3}[`~]*)(.*)$
+  ruler_pattern: ^\s*[^\w\s]{3}.*[^\w\s]{3}$
+
+# Encoding
+encoding: utf-8
+
+# Markup
+markup:
+  # Enable markup in comments
+  enable_markup: true
+
+  # Bullet characters
+  bullet_char: '*'
+  enum_char: '.'
+
+  # Line break
+  canonical_comment_fence: '#'
+
+  # First comment is literal
+  first_comment_is_literal: false
+
+  # Hashruler min/max length
+  hashruler_min_length: 10
+
+# Line comment patterns
+line_comment:
+  - '#'
+
+# Miscellaneous
+misc:
+  # Per-command formatting options
+  per_command: {}
