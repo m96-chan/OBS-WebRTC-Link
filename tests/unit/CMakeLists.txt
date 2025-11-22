@@ -14,4 +14,11 @@ target_link_libraries(sample_test PRIVATE
 )
 
 # Discover tests
-gtest_discover_tests(sample_test)
+# On Windows, defer discovery to POST_BUILD to avoid runtime dependency issues during build
+if(WIN32)
+    gtest_discover_tests(sample_test
+        DISCOVERY_MODE POST_BUILD
+    )
+else()
+    gtest_discover_tests(sample_test)
+endif()
