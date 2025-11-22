@@ -6,9 +6,13 @@ include(GoogleTest)
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
-    ${LIBOBS_INCLUDE_DIR}
     ${LibDataChannel_INCLUDE_DIRS}
 )
+
+# Only add OBS include directory if building the plugin
+if(LIBOBS_INCLUDE_DIR)
+    include_directories(${LIBOBS_INCLUDE_DIR})
+endif()
 
 # Unit tests
 add_subdirectory(unit)
