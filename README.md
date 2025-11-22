@@ -1,5 +1,8 @@
 # OBS-WebRTC-Link
 
+[![Build Status](https://github.com/m96-chan/OBS-WebRTC-Link/workflows/Build/badge.svg)](https://github.com/m96-chan/OBS-WebRTC-Link/actions)
+[![License](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
+
 **English | 日本語**
 
 A versatile WebRTC plugin for OBS Studio that provides **Universal WebRTC Input & Output**.
