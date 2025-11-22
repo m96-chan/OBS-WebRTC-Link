@@ -1,0 +1,80 @@
+name: Code Format Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  format-check:
+    name: Check Code Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format
+
+    - name: Check clang-format version
+      run: |
+        clang-format --version
+
+    - name: Check C++ code formatting
+      run: |
+        echo "Checking C++ files for formatting issues..."
+        FORMATTING_ISSUES=0
+        FILES_CHECKED=0
+
+        # Find all C++ files (excluding dependencies)
+        while IFS= read -r file; do
+          FILES_CHECKED=$((FILES_CHECKED + 1))
+
+          # Check if file needs reformatting
+          if ! clang-format --dry-run --Werror "$file" &> /dev/null; then
+            echo "❌ $file needs formatting"
+            FORMATTING_ISSUES=$((FORMATTING_ISSUES + 1))
+
+            # Show the diff
+            echo "Diff for $file:"
+            clang-format "$file" | diff -u "$file" - || true
+            echo ""
+          else
+            echo "✅ $file"
+          fi
+        done < <(find . \
+          -path ./deps -prune -o \
+          -path ./build -prune -o \
+          -path ./.git -prune -o \
+          \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" -o -name "*.c" \) -type f -print)
+
+        echo ""
+        echo "Checked $FILES_CHECKED files"
+
+        if [ $FORMATTING_ISSUES -gt 0 ]; then
+          echo "❌ Found $FORMATTING_ISSUES files with formatting issues"
+          echo ""
+          echo "To fix formatting issues locally, run:"
+          echo "  ./scripts/format-code.sh"
+          exit 1
+        else
+          echo "✅ All files are properly formatted!"
+          exit 0
+        fi
+
+    - name: Comment formatting instructions on PR
+      if: failure() && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '## ⚠️ Code Formatting Issues\n\nSome files need formatting. Please run:\n\n```bash\n./scripts/format-code.sh\n```\n\nThen commit and push the changes.'
+          })
