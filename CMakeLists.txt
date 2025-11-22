@@ -135,6 +135,7 @@ endif()
 # Core library (WebRTC logic, OBS-independent)
 set(CORE_SOURCES
     src/core/peer-connection.cpp
+    src/core/signaling-client.cpp
 )
 
 add_library(obs-webrtc-core STATIC ${CORE_SOURCES})
