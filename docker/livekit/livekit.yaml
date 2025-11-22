@@ -1,0 +1,22 @@
+port: 7880
+
+rtc:
+  # UDP port range for WebRTC media
+  port_range_start: 50000
+  port_range_end: 60000
+  # Use localhost for local development
+  use_external_ip: false
+
+# API keys for authentication
+# WARNING: These are default development keys. Replace with secure keys in production!
+keys:
+  devkey: devSecretKeyThatIsAtLeast32CharactersLongForSecurityPurposes
+
+# Room configuration
+room:
+  # Automatically create rooms if they don't exist
+  auto_create: true
+
+# Logging configuration
+logging:
+  level: info

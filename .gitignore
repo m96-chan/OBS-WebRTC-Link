@@ -106,3 +106,6 @@ coverage/
 docs/_build/
 docs/html/
 docs/latex/
+
+# Docker environment secrets
+docker/**/.env
