@@ -1,0 +1,21 @@
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    ports:
+      # HTTP API and WHIP/WHEP endpoints
+      - "7880:7880"
+      # WebRTC UDP port range (for media streams)
+      - "50000-50200:50000-50200/udp"
+    volumes:
+      - ./livekit.yaml:/livekit.yaml
+    env_file:
+      - .env
+    command: --config /livekit.yaml --node-ip 127.0.0.1 --bind 0.0.0.0
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+networks:
+  livekit-network:
+    driver: bridge
