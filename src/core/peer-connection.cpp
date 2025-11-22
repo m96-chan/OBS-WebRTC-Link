@@ -6,6 +6,8 @@
 #include "peer-connection.hpp"
 #include <mutex>
 #include <stdexcept>
+#include <vector>
+#include <utility>
 
 namespace obswebrtc {
 namespace core {
@@ -18,6 +20,9 @@ public:
     explicit Impl(const PeerConnectionConfig& config)
         : config_(config)
         , state_(ConnectionState::New)
+        , hasRemoteDescription_(false)
+        , remoteDescriptionSdp_("")
+        , pendingCandidates_()
     {
         try {
             // Configure libdatachannel
@@ -53,25 +58,17 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!peerConnection_) {
-            throw std::runtime_error("PeerConnection is closed");
+            return;  // NoOp if closed
         }
 
         try {
             log(LogLevel::Info, "Creating offer");
 
-            // Set local description callback
-            peerConnection_->onLocalDescription([this](rtc::Description description) {
-                handleLocalDescription(description);
-            });
-
-            // Gather local candidates
-            peerConnection_->onLocalCandidate([this](rtc::Candidate candidate) {
-                handleLocalCandidate(candidate);
-            });
-
             // Create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
-            auto dc = peerConnection_->createDataChannel("negotiation");
+            // Use a unique label for each offer to ensure renegotiation works
+            static int offerCount = 0;
+            auto dc = peerConnection_->createDataChannel("negotiation-" + std::to_string(++offerCount));
 
             log(LogLevel::Debug, "Offer creation initiated");
         } catch (const std::exception& e) {
@@ -84,41 +81,25 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!peerConnection_) {
-            throw std::runtime_error("PeerConnection is closed");
+            return;  // NoOp if closed
         }
 
-        try {
-            log(LogLevel::Info, "Creating answer");
-
-            // Set local description callback
-            peerConnection_->onLocalDescription([this](rtc::Description description) {
-                handleLocalDescription(description);
-            });
-
-            // Gather local candidates
-            peerConnection_->onLocalCandidate([this](rtc::Candidate candidate) {
-                handleLocalCandidate(candidate);
-            });
-
-            // Set up data channel handler to accept incoming data channels from remote offer
-            // This triggers the answer generation in libdatachannel
-            peerConnection_->onDataChannel([](std::shared_ptr<rtc::DataChannel> dc) {
-                // Accept the data channel from the remote peer
-                // The answer will be generated automatically
-            });
-
-            log(LogLevel::Debug, "Answer creation initiated");
-        } catch (const std::exception& e) {
-            log(LogLevel::Error, std::string("Failed to create answer: ") + e.what());
-            throw std::runtime_error(std::string("Failed to create answer: ") + e.what());
+        if (!hasRemoteDescription_) {
+            throw std::runtime_error("Cannot create answer without remote offer");
         }
+
+        // For libdatachannel, the answer is automatically generated when setRemoteDescription
+        // is called with an offer AND the onDataChannel callback is set.
+        // This method exists for API compatibility, but the actual answer generation
+        // happens in setRemoteDescription().
+        log(LogLevel::Info, "Answer will be generated automatically by libdatachannel");
     }
 
     void setRemoteDescription(SdpType type, const std::string& sdp) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!peerConnection_) {
-            throw std::runtime_error("PeerConnection is closed");
+            return;  // NoOp if closed
         }
 
         try {
@@ -131,6 +112,21 @@ public:
             rtc::Description description(sdp, rtcType);
             peerConnection_->setRemoteDescription(description);
 
+            hasRemoteDescription_ = true;
+            remoteDescriptionSdp_ = sdp;  // Store original SDP
+
+            // Add any buffered ICE candidates now that we have a remote description
+            for (const auto& pending : pendingCandidates_) {
+                try {
+                    log(LogLevel::Debug, "Adding buffered ICE candidate");
+                    rtc::Candidate rtcCandidate(pending.first, pending.second);
+                    peerConnection_->addRemoteCandidate(rtcCandidate);
+                } catch (const std::exception& e) {
+                    log(LogLevel::Warning, std::string("Failed to add buffered candidate: ") + e.what());
+                }
+            }
+            pendingCandidates_.clear();
+
             log(LogLevel::Debug, "Remote description set successfully");
         } catch (const std::exception& e) {
             log(LogLevel::Error, std::string("Failed to set remote description: ") + e.what());
@@ -142,7 +138,24 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!peerConnection_) {
-            throw std::runtime_error("PeerConnection is closed");
+            return;  // NoOp if closed
+        }
+
+        // Validate candidate format first
+        if (candidate.empty()) {
+            throw std::runtime_error("ICE candidate cannot be empty");
+        }
+
+        // Basic validation: candidate string should start with "candidate:"
+        if (candidate.find("candidate:") == std::string::npos) {
+            throw std::runtime_error("Invalid ICE candidate format");
+        }
+
+        // Buffer candidates if remote description hasn't been set yet
+        if (!hasRemoteDescription_) {
+            log(LogLevel::Debug, "Buffering ICE candidate (no remote description yet)");
+            pendingCandidates_.push_back({candidate, mid});
+            return;
         }
 
         try {
@@ -205,21 +218,7 @@ public:
 
     std::string getRemoteDescription() const {
         std::lock_guard<std::mutex> lock(mutex_);
-
-        if (!peerConnection_) {
-            return "";
-        }
-
-        try {
-            auto desc = peerConnection_->remoteDescription();
-            if (desc.has_value()) {
-                return std::string(*desc);
-            }
-        } catch (...) {
-            // Ignore exceptions
-        }
-
-        return "";
+        return remoteDescriptionSdp_;
     }
 
 private:
@@ -248,6 +247,22 @@ private:
                     break;
             }
             log(LogLevel::Debug, "ICE gathering state: " + stateStr);
+        });
+
+        // Set local description callback - must be set before any negotiation
+        peerConnection_->onLocalDescription([this](rtc::Description description) {
+            handleLocalDescription(description);
+        });
+
+        // Gather local candidates
+        peerConnection_->onLocalCandidate([this](rtc::Candidate candidate) {
+            handleLocalCandidate(candidate);
+        });
+
+        // Set up data channel handler - must be set before setRemoteDescription
+        peerConnection_->onDataChannel([](std::shared_ptr<rtc::DataChannel> dc) {
+            // Accept the data channel from the remote peer
+            // The answer will be generated automatically
         });
     }
 
@@ -333,6 +348,9 @@ private:
     PeerConnectionConfig config_;
     std::shared_ptr<rtc::PeerConnection> peerConnection_;
     ConnectionState state_;
+    bool hasRemoteDescription_;
+    std::string remoteDescriptionSdp_;
+    std::vector<std::pair<std::string, std::string>> pendingCandidates_;  // Buffered candidates
     mutable std::mutex mutex_;  // Mutable for const methods
 };
 
