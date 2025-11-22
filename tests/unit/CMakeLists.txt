@@ -22,3 +22,26 @@ else()
     # Use automatic discovery on Linux/macOS
     gtest_discover_tests(sample_test)
 endif()
+
+# PeerConnection test executable
+add_executable(peer_connection_test
+    peer_connection_test.cpp
+)
+
+target_include_directories(peer_connection_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(peer_connection_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover peer connection tests
+if(WIN32)
+    gtest_add_tests(TARGET peer_connection_test)
+else()
+    gtest_discover_tests(peer_connection_test)
+endif()

@@ -132,6 +132,23 @@ if(BUILD_TESTING)
     endif()
 endif()
 
+# Core library (WebRTC logic, OBS-independent)
+set(CORE_SOURCES
+    src/core/peer-connection.cpp
+)
+
+add_library(obs-webrtc-core STATIC ${CORE_SOURCES})
+
+target_include_directories(obs-webrtc-core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${LibDataChannel_INCLUDE_DIRS}
+)
+
+target_link_libraries(obs-webrtc-core PUBLIC
+    datachannel-static
+    nlohmann_json::nlohmann_json
+)
+
 # Plugin sources and build (skip if building tests only)
 if(NOT BUILD_TESTS_ONLY)
     set(PLUGIN_SOURCES
@@ -156,8 +173,7 @@ if(NOT BUILD_TESTS_ONLY)
     # Link libraries
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${LIBOBS_LIB}
-        datachannel-static
-        nlohmann_json::nlohmann_json
+        obs-webrtc-core
     )
 
     # Set output name
