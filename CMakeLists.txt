@@ -9,43 +9,50 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Add cmake modules path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Find OBS Studio
-if(NOT DEFINED OBS_INCLUDE_SEARCH_PATH)
-    set(OBS_INCLUDE_SEARCH_PATH "" CACHE PATH "OBS Studio include directory")
+# Option to build only tests (useful for CI without OBS SDK)
+option(BUILD_TESTS_ONLY "Build only tests without OBS plugin" OFF)
+
+# Find OBS Studio (skip if building tests only)
+if(NOT BUILD_TESTS_ONLY)
+    if(NOT DEFINED OBS_INCLUDE_SEARCH_PATH)
+        set(OBS_INCLUDE_SEARCH_PATH "" CACHE PATH "OBS Studio include directory")
+    endif()
+
+    if(NOT DEFINED OBS_LIB_SEARCH_PATH)
+        set(OBS_LIB_SEARCH_PATH "" CACHE PATH "OBS Studio library directory")
+    endif()
+
+    # Find libobs
+    find_path(LIBOBS_INCLUDE_DIR
+        NAMES obs-module.h
+        HINTS
+            ${OBS_INCLUDE_SEARCH_PATH}
+            $ENV{OBS_INCLUDE_DIR}
+            /usr/include
+            /usr/local/include
+        PATH_SUFFIXES
+            obs
+            libobs
+    )
+
+    find_library(LIBOBS_LIB
+        NAMES obs libobs
+        HINTS
+            ${OBS_LIB_SEARCH_PATH}
+            $ENV{OBS_LIB_DIR}
+            /usr/lib
+            /usr/local/lib
+    )
+
+    if(NOT LIBOBS_INCLUDE_DIR OR NOT LIBOBS_LIB)
+        message(FATAL_ERROR "Could not find OBS Studio. Please set OBS_INCLUDE_SEARCH_PATH and OBS_LIB_SEARCH_PATH, or use -DBUILD_TESTS_ONLY=ON to build only tests")
+    endif()
+
+    message(STATUS "Found libobs include: ${LIBOBS_INCLUDE_DIR}")
+    message(STATUS "Found libobs library: ${LIBOBS_LIB}")
+else()
+    message(STATUS "Building tests only (OBS SDK not required)")
 endif()
-
-if(NOT DEFINED OBS_LIB_SEARCH_PATH)
-    set(OBS_LIB_SEARCH_PATH "" CACHE PATH "OBS Studio library directory")
-endif()
-
-# Find libobs
-find_path(LIBOBS_INCLUDE_DIR
-    NAMES obs-module.h
-    HINTS
-        ${OBS_INCLUDE_SEARCH_PATH}
-        $ENV{OBS_INCLUDE_DIR}
-        /usr/include
-        /usr/local/include
-    PATH_SUFFIXES
-        obs
-        libobs
-)
-
-find_library(LIBOBS_LIB
-    NAMES obs libobs
-    HINTS
-        ${OBS_LIB_SEARCH_PATH}
-        $ENV{OBS_LIB_DIR}
-        /usr/lib
-        /usr/local/lib
-)
-
-if(NOT LIBOBS_INCLUDE_DIR OR NOT LIBOBS_LIB)
-    message(FATAL_ERROR "Could not find OBS Studio. Please set OBS_INCLUDE_SEARCH_PATH and OBS_LIB_SEARCH_PATH")
-endif()
-
-message(STATUS "Found libobs include: ${LIBOBS_INCLUDE_DIR}")
-message(STATUS "Found libobs library: ${LIBOBS_LIB}")
 
 # Dependencies
 # Note: Submodules must be initialized with: git submodule update --init --recursive
@@ -124,80 +131,84 @@ if(BUILD_TESTING)
     endif()
 endif()
 
-# Plugin sources
-set(PLUGIN_SOURCES
-    src/plugin-main.cpp
-)
+# Plugin sources and build (skip if building tests only)
+if(NOT BUILD_TESTS_ONLY)
+    set(PLUGIN_SOURCES
+        src/plugin-main.cpp
+    )
 
-# Create plugin library
-add_library(${PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
+    # Create plugin library
+    add_library(${PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
-# Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${LIBOBS_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${LibDataChannel_INCLUDE_DIRS}
-)
+    # Include directories
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${LIBOBS_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${LibDataChannel_INCLUDE_DIRS}
+    )
 
-# Define plugin version
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    PLUGIN_VERSION="${PROJECT_VERSION}"
-)
-
-# Link libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${LIBOBS_LIB}
-    datachannel-static
-    nlohmann_json::nlohmann_json
-)
-
-# Set output name
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    PREFIX ""
-    OUTPUT_NAME ${PROJECT_NAME}
-)
-
-# Platform-specific settings
-if(WIN32)
-    # Windows-specific settings
+    # Define plugin version
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        _CRT_SECURE_NO_WARNINGS
+        PLUGIN_VERSION="${PROJECT_VERSION}"
     )
-elseif(APPLE)
-    # macOS-specific settings
+
+    # Link libraries
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        ${LIBOBS_LIB}
+        datachannel-static
+        nlohmann_json::nlohmann_json
+    )
+
+    # Set output name
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        BUNDLE TRUE
-        BUNDLE_EXTENSION "so"
+        PREFIX ""
+        OUTPUT_NAME ${PROJECT_NAME}
     )
-elseif(UNIX)
-    # Linux-specific settings
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        -fPIC
-    )
+
+    # Platform-specific settings
+    if(WIN32)
+        # Windows-specific settings
+        target_compile_definitions(${PROJECT_NAME} PRIVATE
+            _CRT_SECURE_NO_WARNINGS
+        )
+    elseif(APPLE)
+        # macOS-specific settings
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            BUNDLE TRUE
+            BUNDLE_EXTENSION "so"
+        )
+    elseif(UNIX)
+        # Linux-specific settings
+        target_compile_options(${PROJECT_NAME} PRIVATE
+            -fPIC
+        )
+    endif()
 endif()
 
-# Install plugin
-if(WIN32)
-    install(TARGETS ${PROJECT_NAME}
-        RUNTIME DESTINATION obs-plugins/64bit
-    )
-    install(DIRECTORY data/
-        DESTINATION data/obs-plugins/${PROJECT_NAME}
-    )
-elseif(APPLE)
-    install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION obs-plugins
-    )
-    install(DIRECTORY data/
-        DESTINATION data/obs-plugins/${PROJECT_NAME}
-    )
-else()
-    install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION lib/obs-plugins
-    )
-    install(DIRECTORY data/
-        DESTINATION share/obs/obs-plugins/${PROJECT_NAME}
-    )
+# Install plugin (skip if building tests only)
+if(NOT BUILD_TESTS_ONLY)
+    if(WIN32)
+        install(TARGETS ${PROJECT_NAME}
+            RUNTIME DESTINATION obs-plugins/64bit
+        )
+        install(DIRECTORY data/
+            DESTINATION data/obs-plugins/${PROJECT_NAME}
+        )
+    elseif(APPLE)
+        install(TARGETS ${PROJECT_NAME}
+            LIBRARY DESTINATION obs-plugins
+        )
+        install(DIRECTORY data/
+            DESTINATION data/obs-plugins/${PROJECT_NAME}
+        )
+    else()
+        install(TARGETS ${PROJECT_NAME}
+            LIBRARY DESTINATION lib/obs-plugins
+        )
+        install(DIRECTORY data/
+            DESTINATION share/obs/obs-plugins/${PROJECT_NAME}
+        )
+    endif()
 endif()
 
 # Enable testing
@@ -208,4 +219,8 @@ if(BUILD_TESTING AND GTest_FOUND)
     add_subdirectory(tests)
 endif()
 
-message(STATUS "OBS WebRTC Link plugin configuration complete")
+if(BUILD_TESTS_ONLY)
+    message(STATUS "OBS WebRTC Link tests configuration complete (plugin build skipped)")
+else()
+    message(STATUS "OBS WebRTC Link plugin configuration complete")
+endif()

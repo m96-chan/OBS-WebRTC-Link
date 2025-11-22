@@ -52,7 +52,8 @@ jobs:
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_LIBDATACHANNEL=ON \
-          -DBUILD_TESTING=ON
+          -DBUILD_TESTING=ON \
+          -DBUILD_TESTS_ONLY=ON
 
     - name: Build dependencies
       run: |
@@ -121,7 +122,8 @@ jobs:
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
           -DBUILD_LIBDATACHANNEL=ON `
-          -DBUILD_TESTING=ON
+          -DBUILD_TESTING=ON `
+          -DBUILD_TESTS_ONLY=ON
 
     - name: Build dependencies
       run: |
@@ -189,7 +191,8 @@ jobs:
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_LIBDATACHANNEL=ON \
-          -DBUILD_TESTING=ON
+          -DBUILD_TESTING=ON \
+          -DBUILD_TESTS_ONLY=ON
 
     - name: Build dependencies
       run: |
