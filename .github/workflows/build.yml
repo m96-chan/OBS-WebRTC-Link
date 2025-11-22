@@ -9,12 +9,95 @@ on:
 
 jobs:
   # ============================================================================
-  # Build Jobs - Build dependencies and test binaries
+  # Build OBS SDK Jobs - Build OBS Studio SDK for plugin compilation
+  # ============================================================================
+
+  build-obs-linux:
+    name: Build OBS SDK (Linux)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Cache OBS Studio SDK
+      id: cache-obs
+      uses: actions/cache@v4
+      with:
+        path: obs-studio/build/install
+        key: obs-sdk-linux-30.2.0
+
+    - name: Install OBS dependencies
+      if: steps.cache-obs.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          git \
+          ninja-build \
+          pkg-config \
+          qtbase5-dev \
+          libqt5svg5-dev \
+          libavcodec-dev \
+          libavdevice-dev \
+          libavfilter-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswresample-dev \
+          libswscale-dev \
+          libx264-dev \
+          libcurl4-openssl-dev \
+          libmbedtls-dev \
+          libgl1-mesa-dev \
+          libjansson-dev \
+          libluajit-5.1-dev \
+          python3-dev \
+          libx11-dev \
+          libxcb-xinput-dev \
+          libxcb-randr0-dev \
+          libxcb-xfixes0-dev \
+          libx11-xcb-dev \
+          libxcb1-dev \
+          libxcb-keysyms1-dev \
+          libxcb-shm0-dev \
+          libxcb-xinerama0-dev \
+          libasound2-dev \
+          libpulse-dev \
+          libwayland-dev \
+          libdrm-dev
+
+    - name: Build OBS Studio SDK
+      if: steps.cache-obs.outputs.cache-hit != 'true'
+      run: |
+        git clone --recursive https://github.com/obsproject/obs-studio.git
+        cd obs-studio
+        git checkout 30.2.0
+        mkdir build && cd build
+        cmake .. \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=$PWD/install \
+          -DENABLE_BROWSER=OFF \
+          -DENABLE_WEBSOCKET=OFF \
+          -DENABLE_SCRIPTING=OFF \
+          -DBUILD_TESTS=OFF \
+          -DENABLE_UI=OFF
+        ninja obs-frontend-api
+        ninja install
+
+    - name: Upload OBS SDK
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-sdk-linux
+        path: obs-studio/build/install
+        retention-days: 1
+
+  # ============================================================================
+  # Build Jobs - Build plugin and test binaries
   # ============================================================================
 
   build-linux:
     name: Build (Linux)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    needs: build-obs-linux
 
     steps:
     - name: Checkout code
@@ -32,6 +115,12 @@ jobs:
           ninja-build \
           pkg-config \
           libssl-dev
+
+    - name: Download OBS SDK
+      uses: actions/download-artifact@v4
+      with:
+        name: obs-sdk-linux
+        path: obs-sdk
 
     - name: Check submodules
       run: |
@@ -53,7 +142,8 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_LIBDATACHANNEL=ON \
           -DBUILD_TESTING=ON \
-          -DBUILD_TESTS_ONLY=ON
+          -DOBS_INCLUDE_SEARCH_PATH=$PWD/obs-sdk/include \
+          -DOBS_LIB_SEARCH_PATH=$PWD/obs-sdk/lib
 
     - name: Build dependencies
       run: |
@@ -66,10 +156,22 @@ jobs:
         cd build
         ninja gtest gtest_main gmock
 
+    - name: Build plugin
+      run: |
+        cd build
+        ninja obs-webrtc-link
+
     - name: Build tests
       run: |
         cd build
         ninja sample_test
+
+    - name: Upload plugin binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-plugin
+        path: build/obs-webrtc-link.so
+        retention-days: 7
 
     - name: Upload test binaries
       uses: actions/upload-artifact@v4
@@ -117,7 +219,7 @@ jobs:
         echo "=== googletest exists: ==="
         if (Test-Path deps\googletest) { echo "✓ Found" } else { echo "✗ Not found" }
 
-    - name: Configure CMake
+    - name: Configure CMake (Tests Only)
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
@@ -186,7 +288,7 @@ jobs:
         echo "=== googletest exists: ==="
         test -d deps/googletest && echo "✓ Found" || echo "✗ Not found"
 
-    - name: Configure CMake
+    - name: Configure CMake (Tests Only)
       run: |
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
@@ -333,6 +435,13 @@ jobs:
     if: always()
 
     steps:
+    - name: Download Linux plugin
+      if: needs.build-linux.result == 'success'
+      uses: actions/download-artifact@v4
+      with:
+        name: linux-plugin
+        path: artifacts
+
     - name: Check results
       run: |
         echo "# CI/CD Pipeline Summary"
@@ -347,11 +456,20 @@ jobs:
         echo "- Windows: ${{ needs.test-windows.result }}"
         echo "- macOS:   ${{ needs.test-macos.result }}"
         echo ""
+        echo "## Build Artifacts"
+        if [ -f artifacts/obs-webrtc-link.so ]; then
+          echo "✓ Linux plugin binary: obs-webrtc-link.so"
+        else
+          echo "✗ Linux plugin binary not found"
+        fi
+        echo ""
         echo "## Notes"
-        echo "- Full OBS plugin build requires OBS Studio SDK"
+        echo "- Linux builds full plugin with OBS SDK"
+        echo "- Windows/macOS build tests only (OBS SDK not available)"
         echo "- This workflow validates:"
-        echo "  ✓ Submodule initialization"
-        echo "  ✓ Dependency compilation (libdatachannel, nlohmann-json, googletest)"
+        echo "  ✓ OBS SDK compilation and caching"
+        echo "  ✓ Plugin compilation (Linux)"
+        echo "  ✓ Dependency compilation (all platforms)"
         echo "  ✓ Cross-platform CMake configuration"
         echo "  ✓ Unit test compilation and execution"
         echo ""
