@@ -294,3 +294,240 @@ TEST_F(SignalingClientTest, DestructionWhileConnected) {
     // Destruction should not throw
     EXPECT_NO_THROW(client.reset());
 }
+
+/**
+ * @brief Test JSON serialization for offer message
+ */
+TEST_F(SignalingClientTest, JsonSerializationOfferMessage) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    const std::string offerSdp = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+
+    // Send offer should serialize to JSON correctly
+    EXPECT_NO_THROW(client->sendOffer(offerSdp));
+}
+
+/**
+ * @brief Test JSON serialization for answer message
+ */
+TEST_F(SignalingClientTest, JsonSerializationAnswerMessage) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    const std::string answerSdp = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";
+
+    // Send answer should serialize to JSON correctly
+    EXPECT_NO_THROW(client->sendAnswer(answerSdp));
+}
+
+/**
+ * @brief Test JSON serialization for ICE candidate message
+ */
+TEST_F(SignalingClientTest, JsonSerializationIceCandidateMessage) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    const std::string candidate = "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host";
+    const std::string mid = "0";
+
+    // Send ICE candidate should serialize to JSON correctly
+    EXPECT_NO_THROW(client->sendIceCandidate(candidate, mid));
+}
+
+/**
+ * @brief Test JSON deserialization with malformed offer
+ */
+TEST_F(SignalingClientTest, JsonDeserializationMalformedOffer) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    // Missing sdp field
+    const std::string malformedMessage = R"({
+        "type": "offer"
+    })";
+
+    // Should call error callback
+    EXPECT_NO_THROW(client->handleMessage(malformedMessage));
+    EXPECT_FALSE(lastError_.empty());
+}
+
+/**
+ * @brief Test JSON deserialization with malformed answer
+ */
+TEST_F(SignalingClientTest, JsonDeserializationMalformedAnswer) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    // Missing sdp field
+    const std::string malformedMessage = R"({
+        "type": "answer"
+    })";
+
+    // Should call error callback
+    EXPECT_NO_THROW(client->handleMessage(malformedMessage));
+    EXPECT_FALSE(lastError_.empty());
+}
+
+/**
+ * @brief Test JSON deserialization with malformed ICE candidate
+ */
+TEST_F(SignalingClientTest, JsonDeserializationMalformedIceCandidate) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    // Missing mid field
+    const std::string malformedMessage = R"({
+        "type": "candidate",
+        "candidate": "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host"
+    })";
+
+    // Should call error callback
+    EXPECT_NO_THROW(client->handleMessage(malformedMessage));
+    EXPECT_FALSE(lastError_.empty());
+}
+
+/**
+ * @brief Test receiving offer with special characters in SDP
+ */
+TEST_F(SignalingClientTest, ReceiveOfferWithSpecialCharacters) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    const std::string offerSdp = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\na=test:value with spaces\r\n";
+    const std::string message = R"({
+        "type": "offer",
+        "sdp": ")" + offerSdp + R"("
+    })";
+
+    client->handleMessage(message);
+    EXPECT_EQ(receivedOffer_, offerSdp);
+}
+
+/**
+ * @brief Test receiving answer with multiline SDP
+ */
+TEST_F(SignalingClientTest, ReceiveAnswerWithMultilineSDP) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    const std::string answerSdp = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\ns=-\r\nt=0 0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n";
+    const std::string message = R"({
+        "type": "answer",
+        "sdp": ")" + answerSdp + R"("
+    })";
+
+    client->handleMessage(message);
+    EXPECT_EQ(receivedAnswer_, answerSdp);
+}
+
+/**
+ * @brief Test handling of network timeout error
+ */
+TEST_F(SignalingClientTest, HandleNetworkTimeoutError) {
+    config_.onError = [this](const std::string& error) {
+        lastError_ = error;
+        EXPECT_THAT(error, HasSubstr("timeout"));
+    };
+
+    auto client = std::make_unique<SignalingClient>(config_);
+
+    // Simulate network timeout by connecting to invalid URL
+    config_.url = "wss://invalid.timeout.example.com";
+    auto timeoutClient = std::make_unique<SignalingClient>(config_);
+
+    // Connection attempt should trigger error callback
+    EXPECT_NO_THROW(timeoutClient->connect());
+}
+
+/**
+ * @brief Test handling of connection refused error
+ */
+TEST_F(SignalingClientTest, HandleConnectionRefusedError) {
+    config_.onError = [this](const std::string& error) {
+        lastError_ = error;
+    };
+
+    // Use localhost with no server running
+    config_.url = "wss://localhost:9999";
+    auto client = std::make_unique<SignalingClient>(config_);
+
+    // Connection attempt should trigger error callback
+    EXPECT_NO_THROW(client->connect());
+}
+
+/**
+ * @brief Test reconnection after network error
+ */
+TEST_F(SignalingClientTest, ReconnectAfterNetworkError) {
+    auto client = std::make_unique<SignalingClient>(config_);
+
+    // Connect successfully first time
+    EXPECT_NO_THROW(client->connect());
+
+    // Disconnect
+    EXPECT_NO_THROW(client->disconnect());
+
+    // Should be able to reconnect
+    EXPECT_NO_THROW(client->connect());
+}
+
+/**
+ * @brief Test sending empty SDP offer should throw
+ */
+TEST_F(SignalingClientTest, SendEmptySdpOfferThrows) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    EXPECT_THROW(client->sendOffer(""), std::invalid_argument);
+}
+
+/**
+ * @brief Test sending empty SDP answer should throw
+ */
+TEST_F(SignalingClientTest, SendEmptySdpAnswerThrows) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    EXPECT_THROW(client->sendAnswer(""), std::invalid_argument);
+}
+
+/**
+ * @brief Test sending empty ICE candidate should throw
+ */
+TEST_F(SignalingClientTest, SendEmptyIceCandidateThrows) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    EXPECT_THROW(client->sendIceCandidate("", "0"), std::invalid_argument);
+}
+
+/**
+ * @brief Test concurrent message handling
+ */
+TEST_F(SignalingClientTest, ConcurrentMessageHandling) {
+    auto client = std::make_unique<SignalingClient>(config_);
+    client->connect();
+
+    const std::string offerSdp = "v=0\r\no=- 123 456 IN IP4 0.0.0.0\r\n";
+    const std::string message1 = R"({
+        "type": "offer",
+        "sdp": ")" + offerSdp + R"("
+    })";
+
+    const std::string candidate = "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host";
+    const std::string message2 = R"({
+        "type": "candidate",
+        "candidate": ")" + candidate + R"(",
+        "mid": "0"
+    })";
+
+    // Handle multiple messages concurrently
+    EXPECT_NO_THROW({
+        client->handleMessage(message1);
+        client->handleMessage(message2);
+    });
+
+    EXPECT_EQ(receivedOffer_, offerSdp);
+    EXPECT_EQ(receivedCandidates_.size(), 1);
+}
