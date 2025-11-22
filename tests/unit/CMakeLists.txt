@@ -114,3 +114,26 @@ if(WIN32)
 else()
     gtest_discover_tests(whep_client_test)
 endif()
+
+# P2PConnection test executable
+add_executable(p2p_connection_test
+    p2p_connection_test.cpp
+)
+
+target_include_directories(p2p_connection_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(p2p_connection_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover P2P connection tests
+if(WIN32)
+    gtest_add_tests(TARGET p2p_connection_test)
+else()
+    gtest_discover_tests(p2p_connection_test)
+endif()
