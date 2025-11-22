@@ -33,7 +33,8 @@ jobs:
       run: |
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_LIBDATACHANNEL=ON
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=ON
       continue-on-error: true
 
     - name: Build Dependencies
@@ -42,6 +43,23 @@ jobs:
         ninja datachannel-static || true
         ninja nlohmann_json || true
       continue-on-error: true
+
+    - name: Build and Run Tests
+      run: |
+        cd build
+        ninja gtest gtest_main gmock || true
+        ninja sample_test || true
+        ctest --output-on-failure || true
+      continue-on-error: true
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-test-results
+        path: |
+          build/Testing/**/*.xml
+        if-no-files-found: ignore
 
     - name: Check submodules
       run: |
@@ -53,6 +71,9 @@ jobs:
         echo ""
         echo "=== nlohmann-json exists: ==="
         ls -la deps/nlohmann-json/ || echo "nlohmann-json not found"
+        echo ""
+        echo "=== googletest exists: ==="
+        ls -la deps/googletest/ || echo "googletest not found"
 
     - name: Upload build logs
       if: always()
@@ -81,13 +102,31 @@ jobs:
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
-          -DBUILD_LIBDATACHANNEL=ON
+          -DBUILD_LIBDATACHANNEL=ON `
+          -DBUILD_TESTING=ON
       continue-on-error: true
 
     - name: Build Dependencies
       run: |
         cmake --build build --config Release --target datachannel-static
       continue-on-error: true
+
+    - name: Build and Run Tests
+      run: |
+        cmake --build build --config Release --target gtest
+        cmake --build build --config Release --target sample_test
+        cd build
+        ctest -C Release --output-on-failure
+      continue-on-error: true
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-test-results
+        path: |
+          build/Testing/**/*.xml
+        if-no-files-found: ignore
 
     - name: Check submodules
       run: |
@@ -99,6 +138,9 @@ jobs:
         echo ""
         echo "=== nlohmann-json exists: ==="
         dir deps\nlohmann-json\
+        echo ""
+        echo "=== googletest exists: ==="
+        dir deps\googletest\
       continue-on-error: true
 
     - name: Upload build logs
@@ -129,7 +171,8 @@ jobs:
       run: |
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_LIBDATACHANNEL=ON
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=ON
       continue-on-error: true
 
     - name: Build Dependencies
@@ -138,6 +181,23 @@ jobs:
         ninja datachannel-static || true
         ninja nlohmann_json || true
       continue-on-error: true
+
+    - name: Build and Run Tests
+      run: |
+        cd build
+        ninja gtest gtest_main gmock || true
+        ninja sample_test || true
+        ctest --output-on-failure || true
+      continue-on-error: true
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-test-results
+        path: |
+          build/Testing/**/*.xml
+        if-no-files-found: ignore
 
     - name: Check submodules
       run: |
@@ -149,6 +209,9 @@ jobs:
         echo ""
         echo "=== nlohmann-json exists: ==="
         ls -la deps/nlohmann-json/ || echo "nlohmann-json not found"
+        echo ""
+        echo "=== googletest exists: ==="
+        ls -la deps/googletest/ || echo "googletest not found"
 
     - name: Upload build logs
       if: always()
@@ -177,5 +240,6 @@ jobs:
         echo "Note: Full OBS plugin build requires OBS Studio SDK"
         echo "This workflow validates:"
         echo "  - Submodule initialization"
-        echo "  - Dependency compilation (libdatachannel, nlohmann-json)"
+        echo "  - Dependency compilation (libdatachannel, nlohmann-json, googletest)"
         echo "  - Cross-platform CMake configuration"
+        echo "  - Unit test compilation and execution"

@@ -97,6 +97,33 @@ else()
     find_package(nlohmann_json 3.2.0 REQUIRED)
 endif()
 
+# Google Test (for unit testing)
+option(BUILD_TESTING "Build unit tests" ON)
+
+if(BUILD_TESTING)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/googletest/CMakeLists.txt")
+        message(STATUS "Using Google Test from submodule")
+
+        # Configure Google Test options
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+        set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+
+        add_subdirectory(deps/googletest EXCLUDE_FROM_ALL)
+
+        set(GTest_FOUND TRUE)
+    else()
+        message(WARNING "Google Test submodule not found. Run: git submodule update --init --recursive")
+
+        # Try to find system-installed Google Test
+        find_package(GTest)
+        if(NOT GTest_FOUND)
+            message(WARNING "Google Test not found. Tests will be disabled.")
+            set(BUILD_TESTING OFF)
+        endif()
+    endif()
+endif()
+
 # Plugin sources
 set(PLUGIN_SOURCES
     src/plugin-main.cpp
@@ -175,5 +202,10 @@ endif()
 
 # Enable testing
 enable_testing()
+
+# Add tests subdirectory
+if(BUILD_TESTING AND GTest_FOUND)
+    add_subdirectory(tests)
+endif()
 
 message(STATUS "OBS WebRTC Link plugin configuration complete")
