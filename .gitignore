@@ -80,8 +80,9 @@ $RECYCLE.BIN/
 *.bak
 *.cache
 
-# Dependencies (will be added as submodules)
-deps/*/
+# Dependencies build directories (submodules are tracked)
+deps/*/build/
+deps/*/cmake-build-*/
 
 # Package files
 *.zip

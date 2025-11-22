@@ -97,16 +97,62 @@ graph LR
 
 ## 🛠️ Build from Source
 
-Dependencies:
-- OBS Studio (libobs)
-- LibDataChannel (recommended)
+### Dependencies
 
+**Required:**
+- [OBS Studio](https://obsproject.com/) 30.x or later (libobs)
+- [CMake](https://cmake.org/) 3.20 or later
+- C++17 compatible compiler (MSVC 2019+, GCC 9+, Clang 10+)
+
+**Included as Git Submodules:**
+- [libdatachannel](https://github.com/paullouisageneau/libdatachannel) - WebRTC implementation
+- [nlohmann-json](https://github.com/nlohmann/json) - JSON library for C++
+
+### Build Instructions
+
+**1. Clone with submodules:**
+```bash
+git clone --recursive https://github.com/m96-chan/OBS-WebRTC-Link.git
+cd OBS-WebRTC-Link
 ```
-git clone --recursive https://github.com/yourname/obs-webrtc-link.git
-cd obs-webrtc-link
+
+If you already cloned without `--recursive`, initialize submodules:
+```bash
+git submodule update --init --recursive
+```
+
+**2. Configure with CMake:**
+```bash
 mkdir build && cd build
-cmake .. -DOBS_INCLUDE_SEARCH_PATH="path/to/libobs"
+cmake .. -DOBS_INCLUDE_SEARCH_PATH="path/to/obs-studio/include" \
+         -DOBS_LIB_SEARCH_PATH="path/to/obs-studio/lib"
+```
+
+**3. Build:**
+```bash
 cmake --build . --config Release
+```
+
+**4. Install:**
+```bash
+cmake --install . --config Release
+```
+
+### CMake Options
+
+- `OBS_INCLUDE_SEARCH_PATH` - Path to OBS Studio include directory
+- `OBS_LIB_SEARCH_PATH` - Path to OBS Studio library directory
+- `BUILD_LIBDATACHANNEL` - Build libdatachannel from source (default: ON)
+
+### Dependency Versions
+
+The following dependency versions are locked via Git submodules:
+- libdatachannel: Latest stable
+- nlohmann-json: Latest stable
+
+To update dependencies:
+```bash
+git submodule update --remote
 ```
 
 ---
