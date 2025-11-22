@@ -12,7 +12,15 @@
       "Bash(black:*)",
       "Bash(ruff:*)",
       "Bash(mypy:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(cmake:*)",
+      "Bash(\"C:\\Program Files\\CMake\\bin\\cmake.exe\" -B build -DBUILD_TESTS_ONLY=ON -DBUILD_LIBDATACHANNEL=ON -DBUILD_TESTING=ON)",
+      "Bash(chmod:*)",
+      "Bash(\"C:\\Program Files\\CMake\\bin\\cmake.exe\" --build build --config Debug)",
+      "Bash(ctest:*)",
+      "Bash(\"C:\\Program Files\\CMake\\bin\\ctest.exe\" --test-dir build -C Debug --output-on-failure)",
+      "Bash(\"C:\\Program Files\\CMake\\bin\\ctest.exe\" --test-dir build -C Debug --output-on-failure -R \"WHIP|WHEP\")",
+      "Bash(bash scripts/check-format.sh:*)"
     ],
     "deny": [],
     "ask": []
