@@ -208,7 +208,9 @@ jobs:
         name: linux-test-binaries
         path: |
           build/tests/unit/*_test
-          build/Testing/
+          build/tests/unit/CTestTestfile.cmake
+          build/CTestTestfile.cmake
+          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -276,7 +278,9 @@ jobs:
         name: windows-test-binaries
         path: |
           build/tests/unit/Release/*_test.exe
-          build/Testing/
+          build/tests/unit/CTestTestfile.cmake
+          build/CTestTestfile.cmake
+          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -347,7 +351,9 @@ jobs:
         name: macos-test-binaries
         path: |
           build/tests/unit/*_test
-          build/Testing/
+          build/tests/unit/CTestTestfile.cmake
+          build/CTestTestfile.cmake
+          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
