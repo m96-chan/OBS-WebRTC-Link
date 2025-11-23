@@ -212,7 +212,7 @@ public:
                     return;
                 }
                 if (config_.onOffer) {
-                    config_.onOffer(json["sdp"]);
+                    config_.onOffer(json["sdp"].get<std::string>());
                 }
             } else if (type == "answer") {
                 if (!json.contains("sdp")) {
@@ -222,7 +222,7 @@ public:
                     return;
                 }
                 if (config_.onAnswer) {
-                    config_.onAnswer(json["sdp"]);
+                    config_.onAnswer(json["sdp"].get<std::string>());
                 }
             } else if (type == "candidate") {
                 if (!json.contains("candidate") || !json.contains("mid")) {
@@ -232,7 +232,7 @@ public:
                     return;
                 }
                 if (config_.onIceCandidate) {
-                    config_.onIceCandidate(json["candidate"], json["mid"]);
+                    config_.onIceCandidate(json["candidate"].get<std::string>(), json["mid"].get<std::string>());
                 }
             } else {
                 if (config_.onError) {

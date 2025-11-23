@@ -55,10 +55,15 @@ public:
     }
 
     void createOffer() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_ptr<rtc::PeerConnection> pc;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
 
-        if (!peerConnection_) {
-            return;  // NoOp if closed
+            if (!peerConnection_) {
+                return;  // NoOp if closed
+            }
+
+            pc = peerConnection_;
         }
 
         try {
@@ -66,9 +71,21 @@ public:
 
             // Create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
+            // We must keep a reference to the data channel, otherwise it will be destroyed immediately
             // Use a unique label for each offer to ensure renegotiation works
+            // Note: We release the mutex before creating the data channel to avoid potential deadlocks
+            // if libdatachannel calls our callbacks synchronously
             static int offerCount = 0;
-            auto dc = peerConnection_->createDataChannel("negotiation-" + std::to_string(++offerCount));
+            auto dc = pc->createDataChannel("negotiation-" + std::to_string(++offerCount));
+
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                dataChannel_ = dc;
+            }
+
+            // Trigger local description generation
+            // This will invoke the onLocalDescription callback
+            pc->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
         } catch (const std::exception& e) {
@@ -188,6 +205,12 @@ public:
             log(LogLevel::Info, "Closing PeerConnection");
 
             try {
+                // Close and clear data channel first
+                if (dataChannel_) {
+                    dataChannel_->close();
+                    dataChannel_.reset();
+                }
+
                 peerConnection_->close();
                 peerConnection_.reset();
                 setState(ConnectionState::Closed);
@@ -260,9 +283,11 @@ private:
         });
 
         // Set up data channel handler - must be set before setRemoteDescription
-        peerConnection_->onDataChannel([](std::shared_ptr<rtc::DataChannel> dc) {
+        peerConnection_->onDataChannel([this](std::shared_ptr<rtc::DataChannel> dc) {
             // Accept the data channel from the remote peer
             // The answer will be generated automatically
+            // Keep a reference to prevent it from being destroyed
+            dataChannel_ = dc;
         });
     }
 
@@ -347,6 +372,7 @@ private:
 
     PeerConnectionConfig config_;
     std::shared_ptr<rtc::PeerConnection> peerConnection_;
+    std::shared_ptr<rtc::DataChannel> dataChannel_;  // Keep reference to data channel
     ConnectionState state_;
     bool hasRemoteDescription_;
     std::string remoteDescriptionSdp_;
