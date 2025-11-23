@@ -208,3 +208,42 @@ if(WIN32)
 else()
     gtest_discover_tests(reconnection_manager_test)
 endif()
+
+# Settings Dialog test executable (requires Qt)
+if(QT_FOUND)
+    add_executable(settings_dialog_test
+        settings_dialog_test.cpp
+        ../../src/ui/settings-dialog.cpp
+    )
+
+    target_include_directories(settings_dialog_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+    )
+
+    if(QT_VERSION EQUAL 6)
+        target_link_libraries(settings_dialog_test PRIVATE
+            GTest::gtest
+            GTest::gtest_main
+            GTest::gmock
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Widgets
+        )
+    else()
+        target_link_libraries(settings_dialog_test PRIVATE
+            GTest::gtest
+            GTest::gtest_main
+            GTest::gmock
+            Qt5::Core
+            Qt5::Gui
+            Qt5::Widgets
+        )
+    endif()
+
+    # Discover Settings Dialog tests
+    if(WIN32)
+        gtest_add_tests(TARGET settings_dialog_test)
+    else()
+        gtest_discover_tests(settings_dialog_test)
+    endif()
+endif()

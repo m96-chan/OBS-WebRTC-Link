@@ -160,6 +160,33 @@ set_target_properties(obs-webrtc-core PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
+# Find Qt (skip if building tests only)
+if(NOT BUILD_TESTS_ONLY)
+    find_package(Qt6 COMPONENTS Core Gui Widgets)
+    if(NOT Qt6_FOUND)
+        find_package(Qt5 5.15 COMPONENTS Core Gui Widgets)
+        if(NOT Qt5_FOUND)
+            message(WARNING "Qt not found. Building plugin without UI components.")
+            set(QT_FOUND FALSE)
+        else()
+            set(QT_FOUND TRUE)
+            set(QT_VERSION 5)
+            message(STATUS "Found Qt5: ${Qt5_VERSION}")
+        endif()
+    else()
+        set(QT_FOUND TRUE)
+        set(QT_VERSION 6)
+        message(STATUS "Found Qt6: ${Qt6_VERSION}")
+    endif()
+
+    # Enable Qt MOC, UIC, and RCC
+    if(QT_FOUND)
+        set(CMAKE_AUTOMOC ON)
+        set(CMAKE_AUTORCC ON)
+        set(CMAKE_AUTOUIC ON)
+    endif()
+endif()
+
 # Plugin sources and build (skip if building tests only)
 if(NOT BUILD_TESTS_ONLY)
     set(PLUGIN_SOURCES
@@ -169,6 +196,13 @@ if(NOT BUILD_TESTS_ONLY)
         src/source/obs-webrtc-source.cpp
         src/source/webrtc-source.cpp
     )
+
+    # Add UI sources if Qt is available
+    if(QT_FOUND)
+        list(APPEND PLUGIN_SOURCES
+            src/ui/settings-dialog.cpp
+        )
+    endif()
 
     # Create plugin library
     add_library(${PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
@@ -190,6 +224,26 @@ if(NOT BUILD_TESTS_ONLY)
         ${LIBOBS_LIB}
         obs-webrtc-core
     )
+
+    # Link Qt libraries if available
+    if(QT_FOUND)
+        if(QT_VERSION EQUAL 6)
+            target_link_libraries(${PROJECT_NAME} PRIVATE
+                Qt6::Core
+                Qt6::Gui
+                Qt6::Widgets
+            )
+        else()
+            target_link_libraries(${PROJECT_NAME} PRIVATE
+                Qt5::Core
+                Qt5::Gui
+                Qt5::Widgets
+            )
+        endif()
+        target_compile_definitions(${PROJECT_NAME} PRIVATE
+            ENABLE_QT_UI
+        )
+    endif()
 
     # Set output name
     set_target_properties(${PROJECT_NAME} PROPERTIES
