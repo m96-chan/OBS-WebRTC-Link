@@ -208,9 +208,6 @@ jobs:
         name: linux-test-binaries
         path: |
           build/tests/unit/*_test
-          build/tests/unit/CTestTestfile.cmake
-          build/CTestTestfile.cmake
-          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -278,9 +275,6 @@ jobs:
         name: windows-test-binaries
         path: |
           build/tests/unit/Release/*_test.exe
-          build/tests/unit/CTestTestfile.cmake
-          build/CTestTestfile.cmake
-          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -351,9 +345,6 @@ jobs:
         name: macos-test-binaries
         path: |
           build/tests/unit/*_test
-          build/tests/unit/CTestTestfile.cmake
-          build/CTestTestfile.cmake
-          build/DartConfiguration.tcl
         retention-days: 1
 
     - name: Upload build logs
@@ -386,10 +377,23 @@ jobs:
       run: |
         chmod +x build/tests/unit/*_test
 
-    - name: Run all tests with CTest
+    - name: Run all unit tests
       run: |
-        cd build
-        ctest --output-on-failure --verbose
+        cd build/tests/unit
+        EXIT_CODE=0
+        for test in *_test; do
+          echo "========================================"
+          echo "Running $test..."
+          echo "========================================"
+          if ./$test --gtest_output=xml:${test}_results.xml; then
+            echo "✓ $test passed"
+          else
+            echo "✗ $test failed"
+            EXIT_CODE=1
+          fi
+          echo ""
+        done
+        exit $EXIT_CODE
 
     - name: Upload test results
       if: always()
@@ -397,7 +401,7 @@ jobs:
       with:
         name: linux-test-results
         path: |
-          build/Testing/**/*.xml
+          build/tests/unit/*_results.xml
         if-no-files-found: ignore
 
   test-windows:
@@ -412,10 +416,25 @@ jobs:
         name: windows-test-binaries
         path: build
 
-    - name: Run all tests with CTest
+    - name: Run all unit tests
       run: |
-        cd build
-        ctest -C Release --output-on-failure --verbose
+        cd build/tests/unit/Release
+        $EXIT_CODE = 0
+        Get-ChildItem -Filter "*_test.exe" | ForEach-Object {
+          Write-Host "========================================"
+          Write-Host "Running $($_.Name)..."
+          Write-Host "========================================"
+          $testName = $_.BaseName
+          & $_.FullName --gtest_output=xml:${testName}_results.xml
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ $($_.Name) passed"
+          } else {
+            Write-Host "✗ $($_.Name) failed"
+            $EXIT_CODE = 1
+          }
+          Write-Host ""
+        }
+        exit $EXIT_CODE
 
     - name: Upload test results
       if: always()
@@ -423,7 +442,7 @@ jobs:
       with:
         name: windows-test-results
         path: |
-          build/Testing/**/*.xml
+          build/tests/unit/Release/*_results.xml
         if-no-files-found: ignore
 
   test-macos:
@@ -442,10 +461,23 @@ jobs:
       run: |
         chmod +x build/tests/unit/*_test
 
-    - name: Run all tests with CTest
+    - name: Run all unit tests
       run: |
-        cd build
-        ctest --output-on-failure --verbose
+        cd build/tests/unit
+        EXIT_CODE=0
+        for test in *_test; do
+          echo "========================================"
+          echo "Running $test..."
+          echo "========================================"
+          if ./$test --gtest_output=xml:${test}_results.xml; then
+            echo "✓ $test passed"
+          else
+            echo "✗ $test failed"
+            EXIT_CODE=1
+          fi
+          echo ""
+        done
+        exit $EXIT_CODE
 
     - name: Upload test results
       if: always()
@@ -453,7 +485,7 @@ jobs:
       with:
         name: macos-test-results
         path: |
-          build/Testing/**/*.xml
+          build/tests/unit/*_results.xml
         if-no-files-found: ignore
 
   # ============================================================================
