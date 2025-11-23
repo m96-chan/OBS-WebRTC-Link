@@ -373,13 +373,19 @@ jobs:
         name: linux-test-binaries
         path: build
 
-    - name: Set executable permissions
-      run: |
-        chmod +x build/tests/unit/*_test
-
     - name: Run all unit tests
       run: |
-        cd build/tests/unit
+        # Find test binaries
+        TEST_DIR=$(find build -type f -name "*_test" | head -1 | xargs dirname)
+        if [ -z "$TEST_DIR" ]; then
+          echo "Error: No test binaries found"
+          exit 1
+        fi
+
+        echo "Found test binaries in: $TEST_DIR"
+        chmod +x $TEST_DIR/*_test
+        cd $TEST_DIR
+
         EXIT_CODE=0
         for test in *_test; do
           echo "========================================"
@@ -401,7 +407,7 @@ jobs:
       with:
         name: linux-test-results
         path: |
-          build/tests/unit/*_results.xml
+          build/**/*_results.xml
         if-no-files-found: ignore
 
   test-windows:
@@ -466,13 +472,19 @@ jobs:
         name: macos-test-binaries
         path: build
 
-    - name: Set executable permissions
-      run: |
-        chmod +x build/tests/unit/*_test
-
     - name: Run all unit tests
       run: |
-        cd build/tests/unit
+        # Find test binaries
+        TEST_DIR=$(find build -type f -name "*_test" | head -1 | xargs dirname)
+        if [ -z "$TEST_DIR" ]; then
+          echo "Error: No test binaries found"
+          exit 1
+        fi
+
+        echo "Found test binaries in: $TEST_DIR"
+        chmod +x $TEST_DIR/*_test
+        cd $TEST_DIR
+
         EXIT_CODE=0
         for test in *_test; do
           echo "========================================"
@@ -494,7 +506,7 @@ jobs:
       with:
         name: macos-test-results
         path: |
-          build/tests/unit/*_results.xml
+          build/**/*_results.xml
         if-no-files-found: ignore
 
   # ============================================================================
