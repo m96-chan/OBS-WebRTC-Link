@@ -418,7 +418,16 @@ jobs:
 
     - name: Run all unit tests
       run: |
-        cd build/tests/unit/Release
+        # Find the actual location of test binaries
+        $testDir = Get-ChildItem -Path build -Recurse -Filter "*_test.exe" | Select-Object -First 1 | Select-Object -ExpandProperty Directory
+        if (-not $testDir) {
+          Write-Error "No test binaries found"
+          exit 1
+        }
+
+        Write-Host "Found test binaries in: $($testDir.FullName)"
+        cd $testDir.FullName
+
         $EXIT_CODE = 0
         Get-ChildItem -Filter "*_test.exe" | ForEach-Object {
           Write-Host "========================================"
@@ -442,7 +451,7 @@ jobs:
       with:
         name: windows-test-results
         path: |
-          build/tests/unit/Release/*_results.xml
+          build/**/*_results.xml
         if-no-files-found: ignore
 
   test-macos:
