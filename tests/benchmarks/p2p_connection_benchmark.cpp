@@ -11,9 +11,8 @@ using namespace obswebrtc::core;
 // Benchmark P2P connection creation
 static void BM_P2PConnectionCreation(benchmark::State& state) {
     for (auto _ : state) {
-        P2PConfig config;
+        P2PConnectionConfig config;
         config.stunServers = {"stun:stun.l.google.com:19302"};
-        config.role = PeerRole::Offerer;
 
         benchmark::DoNotOptimize(config);
         P2PConnection connection(config);
@@ -29,8 +28,7 @@ static void BM_P2PConfigWithMultipleSTUN(benchmark::State& state) {
     const int num_stun_servers = state.range(0);
 
     for (auto _ : state) {
-        P2PConfig config;
-        config.role = PeerRole::Offerer;
+        P2PConnectionConfig config;
 
         for (int i = 0; i < num_stun_servers; ++i) {
             config.stunServers.push_back("stun:stun" + std::to_string(i) + ".l.google.com:19302");
@@ -48,15 +46,12 @@ BENCHMARK(BM_P2PConfigWithMultipleSTUN)->Range(1, 8);
 // Benchmark P2P configuration with TURN servers
 static void BM_P2PConfigWithTURN(benchmark::State& state) {
     for (auto _ : state) {
-        P2PConfig config;
-        config.role = PeerRole::Answerer;
+        P2PConnectionConfig config;
         config.stunServers = {"stun:stun.l.google.com:19302"};
         config.turnServers = {
-            "turn:turn1.example.com:3478",
-            "turn:turn2.example.com:3478"
+            {"turn:turn1.example.com:3478", "testuser", "testpassword"},
+            {"turn:turn2.example.com:3478", "testuser", "testpassword"}
         };
-        config.turnUsername = "testuser";
-        config.turnPassword = "testpassword";
 
         benchmark::DoNotOptimize(config);
         P2PConnection connection(config);
@@ -76,9 +71,8 @@ static void BM_MultipleP2PConnections(benchmark::State& state) {
         connections.reserve(num_connections);
 
         for (int i = 0; i < num_connections; ++i) {
-            P2PConfig config;
+            P2PConnectionConfig config;
             config.stunServers = {"stun:stun.l.google.com:19302"};
-            config.role = (i % 2 == 0) ? PeerRole::Offerer : PeerRole::Answerer;
 
             connections.push_back(std::make_unique<P2PConnection>(config));
         }
@@ -93,22 +87,19 @@ BENCHMARK(BM_MultipleP2PConnections)->Range(2, 32)->Unit(benchmark::kMicrosecond
 
 // Benchmark P2P configuration copy
 static void BM_P2PConfigCopy(benchmark::State& state) {
-    P2PConfig original;
-    original.role = PeerRole::Offerer;
+    P2PConnectionConfig original;
     original.stunServers = {
         "stun:stun1.l.google.com:19302",
         "stun:stun2.l.google.com:19302",
         "stun:stun3.l.google.com:19302"
     };
     original.turnServers = {
-        "turn:turn1.example.com:3478",
-        "turn:turn2.example.com:3478"
+        {"turn:turn1.example.com:3478", "test-user-with-long-username", "test-password-with-long-password"},
+        {"turn:turn2.example.com:3478", "test-user-with-long-username", "test-password-with-long-password"}
     };
-    original.turnUsername = "test-user-with-long-username";
-    original.turnPassword = "test-password-with-long-password";
 
     for (auto _ : state) {
-        P2PConfig copy = original;
+        P2PConnectionConfig copy = original;
         benchmark::DoNotOptimize(copy);
         benchmark::ClobberMemory();
     }
@@ -117,14 +108,22 @@ static void BM_P2PConfigCopy(benchmark::State& state) {
 }
 BENCHMARK(BM_P2PConfigCopy);
 
-// Benchmark role-based configuration (Offerer vs Answerer)
-static void BM_P2PRoleConfiguration(benchmark::State& state) {
-    const PeerRole role = (state.range(0) == 0) ? PeerRole::Offerer : PeerRole::Answerer;
+// Benchmark P2P connection with different configurations
+static void BM_P2PConnectionConfiguration(benchmark::State& state) {
+    const int config_type = state.range(0);
 
     for (auto _ : state) {
-        P2PConfig config;
-        config.role = role;
-        config.stunServers = {"stun:stun.l.google.com:19302"};
+        P2PConnectionConfig config;
+
+        // Different configuration types
+        if (config_type == 0) {
+            // Basic STUN only
+            config.stunServers = {"stun:stun.l.google.com:19302"};
+        } else {
+            // STUN + TURN
+            config.stunServers = {"stun:stun.l.google.com:19302"};
+            config.turnServers = {{"turn:turn.example.com:3478", "user", "pass"}};
+        }
 
         benchmark::DoNotOptimize(config);
         P2PConnection connection(config);
@@ -132,6 +131,6 @@ static void BM_P2PRoleConfiguration(benchmark::State& state) {
     }
 
     state.SetItemsProcessed(state.iterations());
-    state.SetLabel(role == PeerRole::Offerer ? "Offerer" : "Answerer");
+    state.SetLabel(config_type == 0 ? "STUN" : "STUN+TURN");
 }
-BENCHMARK(BM_P2PRoleConfiguration)->Arg(0)->Arg(1);
+BENCHMARK(BM_P2PConnectionConfiguration)->Arg(0)->Arg(1);

@@ -105,9 +105,8 @@ static void BM_ConcurrentP2PConnections(benchmark::State& state) {
         auto start = std::chrono::high_resolution_clock::now();
 
         for (int i = 0; i < num_connections; ++i) {
-            P2PConfig config;
+            P2PConnectionConfig config;
             config.stunServers = {"stun:stun.l.google.com:19302"};
-            config.role = (i % 2 == 0) ? PeerRole::Offerer : PeerRole::Answerer;
 
             try {
                 connections.push_back(std::make_unique<P2PConnection>(config));
@@ -172,9 +171,8 @@ static void BM_MixedClientTypes(benchmark::State& state) {
 
         // Create P2P connections
         for (int i = 0; i < clients_per_type; ++i) {
-            P2PConfig config;
+            P2PConnectionConfig config;
             config.stunServers = {"stun:stun.l.google.com:19302"};
-            config.role = (i % 2 == 0) ? PeerRole::Offerer : PeerRole::Answerer;
             try {
                 p2p_connections.push_back(std::make_unique<P2PConnection>(config));
             } catch (...) {}
