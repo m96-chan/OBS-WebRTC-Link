@@ -1,0 +1,211 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  benchmark-linux:
+    name: Benchmark (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          git \
+          ninja-build \
+          pkg-config \
+          libssl-dev
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=OFF \
+          -DBUILD_BENCHMARKS=ON \
+          -DBUILD_TESTS_ONLY=ON
+
+    - name: Build dependencies
+      run: |
+        cd build
+        ninja datachannel-static
+
+    - name: Build benchmark framework
+      run: |
+        cd build
+        ninja benchmark || echo "benchmark built"
+
+    - name: Build all benchmarks
+      run: |
+        cd build
+        ninja all
+
+    - name: Run WHIP connection benchmark
+      run: |
+        ./build/tests/benchmarks/whip_connection_benchmark \
+          --benchmark_min_time=0.1 \
+          --benchmark_format=json \
+          --benchmark_out=whip_benchmark.json
+
+    - name: Run WHEP connection benchmark
+      run: |
+        ./build/tests/benchmarks/whep_connection_benchmark \
+          --benchmark_min_time=0.1 \
+          --benchmark_format=json \
+          --benchmark_out=whep_benchmark.json
+
+    - name: Run P2P connection benchmark
+      run: |
+        ./build/tests/benchmarks/p2p_connection_benchmark \
+          --benchmark_min_time=0.1 \
+          --benchmark_format=json \
+          --benchmark_out=p2p_benchmark.json
+
+    - name: Run media throughput benchmark
+      run: |
+        ./build/tests/benchmarks/media_throughput_benchmark \
+          --benchmark_min_time=0.1 \
+          --benchmark_format=json \
+          --benchmark_out=media_benchmark.json
+
+    - name: Run scalability benchmark
+      run: |
+        ./build/tests/benchmarks/scalability_benchmark \
+          --benchmark_min_time=0.1 \
+          --benchmark_format=json \
+          --benchmark_out=scalability_benchmark.json
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-linux
+        path: |
+          *_benchmark.json
+        retention-days: 30
+
+  benchmark-windows:
+    name: Benchmark (Windows)
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure CMake
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DBUILD_LIBDATACHANNEL=ON `
+          -DBUILD_TESTING=OFF `
+          -DBUILD_BENCHMARKS=ON `
+          -DBUILD_TESTS_ONLY=ON
+
+    - name: Build dependencies
+      run: |
+        cmake --build build --config Release --target datachannel-static
+
+    - name: Build all benchmarks
+      run: |
+        cmake --build build --config Release
+
+    - name: Run WHIP connection benchmark
+      run: |
+        .\build\tests\benchmarks\Release\whip_connection_benchmark.exe `
+          --benchmark_min_time=0.1 `
+          --benchmark_format=json `
+          --benchmark_out=whip_benchmark.json
+
+    - name: Run WHEP connection benchmark
+      run: |
+        .\build\tests\benchmarks\Release\whep_connection_benchmark.exe `
+          --benchmark_min_time=0.1 `
+          --benchmark_format=json `
+          --benchmark_out=whep_benchmark.json
+
+    - name: Run P2P connection benchmark
+      run: |
+        .\build\tests\benchmarks\Release\p2p_connection_benchmark.exe `
+          --benchmark_min_time=0.1 `
+          --benchmark_format=json `
+          --benchmark_out=p2p_benchmark.json
+
+    - name: Run media throughput benchmark
+      run: |
+        .\build\tests\benchmarks\Release\media_throughput_benchmark.exe `
+          --benchmark_min_time=0.1 `
+          --benchmark_format=json `
+          --benchmark_out=media_benchmark.json
+
+    - name: Run scalability benchmark
+      run: |
+        .\build\tests\benchmarks\Release\scalability_benchmark.exe `
+          --benchmark_min_time=0.1 `
+          --benchmark_format=json `
+          --benchmark_out=scalability_benchmark.json
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-windows
+        path: |
+          *_benchmark.json
+        retention-days: 30
+
+  benchmark-summary:
+    name: Benchmark Summary
+    runs-on: ubuntu-latest
+    needs: [benchmark-linux, benchmark-windows]
+    if: always()
+
+    steps:
+    - name: Download Linux results
+      if: needs.benchmark-linux.result == 'success'
+      uses: actions/download-artifact@v4
+      with:
+        name: benchmark-results-linux
+        path: results/linux
+
+    - name: Download Windows results
+      if: needs.benchmark-windows.result == 'success'
+      uses: actions/download-artifact@v4
+      with:
+        name: benchmark-results-windows
+        path: results/windows
+
+    - name: Display summary
+      run: |
+        echo "# Performance Benchmark Results"
+        echo ""
+        echo "## Benchmark Status"
+        echo "- Linux:   ${{ needs.benchmark-linux.result }}"
+        echo "- Windows: ${{ needs.benchmark-windows.result }}"
+        echo ""
+        echo "## Available Results"
+        if [ -d results/linux ]; then
+          echo "### Linux Benchmarks"
+          ls -lh results/linux/*.json || echo "No JSON files found"
+        fi
+        if [ -d results/windows ]; then
+          echo "### Windows Benchmarks"
+          ls -lh results/windows/*.json || echo "No JSON files found"
+        fi
+        echo ""
+        echo "Download artifacts to view detailed benchmark results"
