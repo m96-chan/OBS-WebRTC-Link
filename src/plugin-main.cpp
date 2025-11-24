@@ -80,3 +80,11 @@ MODULE_EXPORT const char *obs_module_author(void)
 {
 	return "OBS-WebRTC-Link Contributors";
 }
+
+/**
+ * @brief Get plugin version
+ */
+const char *obs_webrtc_link_version(void)
+{
+	return PLUGIN_VERSION;
+}

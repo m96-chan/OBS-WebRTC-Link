@@ -209,6 +209,28 @@ else()
     gtest_discover_tests(reconnection_manager_test)
 endif()
 
+# Version test executable
+add_executable(version_test
+    version_test.cpp
+)
+
+target_link_libraries(version_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+# Define PLUGIN_VERSION for version tests
+target_compile_definitions(version_test PRIVATE
+    PLUGIN_VERSION="${PROJECT_VERSION}"
+)
+
+# Discover version tests
+if(WIN32)
+    gtest_add_tests(TARGET version_test)
+else()
+    gtest_discover_tests(version_test)
+endif()
+
 # Settings Dialog test executable (requires Qt)
 if(QT_FOUND)
     add_executable(settings_dialog_test
