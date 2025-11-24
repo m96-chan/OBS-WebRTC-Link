@@ -198,6 +198,7 @@ set(CORE_SOURCES
     src/core/whep-client.cpp
     src/core/p2p-connection.cpp
     src/core/reconnection-manager.cpp
+    src/core/audio-only-config.cpp
 )
 
 add_library(obs-webrtc-core STATIC ${CORE_SOURCES})
