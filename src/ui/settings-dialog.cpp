@@ -42,7 +42,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
       mainLayout_(nullptr),
       formLayout_(nullptr) {
     setupUi();
-    setWindowTitle(tr("WebRTC Link Settings"));
+    setWindowTitle(tr("WebRTC Link Settings - v") + QString(PLUGIN_VERSION));
     setMinimumWidth(400);
 }
 
