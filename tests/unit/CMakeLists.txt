@@ -224,6 +224,14 @@ target_compile_definitions(version_test PRIVATE
     PLUGIN_VERSION="${PROJECT_VERSION}"
 )
 
+# Copy VERSION file to build directory for tests
+add_custom_command(TARGET version_test POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/VERSION
+        $<TARGET_FILE_DIR:version_test>/VERSION
+    COMMENT "Copying VERSION file for version_test"
+)
+
 # Discover version tests
 if(WIN32)
     gtest_add_tests(TARGET version_test)
