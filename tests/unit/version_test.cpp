@@ -7,6 +7,7 @@
 #include <fstream>
 #include <regex>
 #include <string>
+#include <vector>
 
 /**
  * @brief Test fixture for version management tests
@@ -26,17 +27,26 @@ protected:
      * @return Version string
      */
     std::string readVersionFile() {
-        std::ifstream file("../VERSION");
-        if (!file.is_open()) {
-            // Try alternative path for different build configurations
-            file.open("../../VERSION");
-            if (!file.is_open()) {
-                return "";
+        // Try multiple possible paths for VERSION file
+        std::vector<std::string> paths = {
+            "VERSION",           // Current directory
+            "../VERSION",        // One level up
+            "../../VERSION",     // Two levels up
+            "../../../VERSION"   // Three levels up (for deep build dirs)
+        };
+
+        for (const auto& path : paths) {
+            std::ifstream file(path);
+            if (file.is_open()) {
+                std::string version;
+                std::getline(file, version);
+                // Trim whitespace
+                version.erase(0, version.find_first_not_of(" \t\r\n"));
+                version.erase(version.find_last_not_of(" \t\r\n") + 1);
+                return version;
             }
         }
-        std::string version;
-        std::getline(file, version);
-        return version;
+        return "";
     }
 
     /**
