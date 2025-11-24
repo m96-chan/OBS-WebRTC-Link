@@ -52,15 +52,20 @@ public:
     }
 
     void createOffer() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_ptr<rtc::PeerConnection> pc;
+        bool isRenegotiation = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
 
-        if (!peerConnection_) {
-            return;  // NoOp if closed
+            if (!peerConnection_) {
+                return;  // NoOp if closed
+            }
+
+            pc = peerConnection_;
+            isRenegotiation = hasLocalDescription_;
         }
 
         try {
-            bool isRenegotiation = hasLocalDescription_;
-
             if (isRenegotiation) {
                 log(LogLevel::Info, "Creating offer (renegotiation)");
             } else {
@@ -69,15 +74,18 @@ public:
 
             // For initial offer, create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
+            // Note: We release the mutex before creating the data channel to avoid deadlock
+            // if libdatachannel calls our callbacks synchronously
             if (!isRenegotiation) {
-                auto dc = peerConnection_->createDataChannel("negotiation");
+                auto dc = pc->createDataChannel("negotiation");
+                std::lock_guard<std::mutex> lock(mutex_);
                 dataChannel_ = dc;  // Keep reference to prevent destruction
             }
 
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
             // Always use Type::Offer for both initial and renegotiation
-            peerConnection_->setLocalDescription(rtc::Description::Type::Offer);
+            pc->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
         } catch (const std::exception& e) {
