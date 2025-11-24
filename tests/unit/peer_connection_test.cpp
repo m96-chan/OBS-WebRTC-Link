@@ -379,6 +379,9 @@ TEST_F(PeerConnectionTest, OperationsAfterCloseAreNoOp) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     pc->close();
 
+    // Wait for close to complete before attempting operations
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     // These should not crash, but may throw or be no-op
     EXPECT_NO_THROW({
         pc->createOffer();
