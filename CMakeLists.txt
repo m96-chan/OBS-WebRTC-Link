@@ -26,15 +26,34 @@ if(NOT BUILD_TESTS_ONLY)
         set(OBS_LIB_SEARCH_PATH "" CACHE PATH "OBS Studio library directory")
     endif()
 
+    # Platform-specific OBS installation paths
+    if(WIN32)
+        set(OBS_PROGRAM_FILES_PATHS
+            "C:/Program Files/obs-studio"
+            "C:/Program Files (x86)/obs-studio"
+            "$ENV{ProgramFiles}/obs-studio"
+            "$ENV{ProgramW6432}/obs-studio"
+        )
+    elseif(APPLE)
+        set(OBS_MACOS_PATHS
+            "/Applications/OBS.app/Contents/Resources"
+            "/usr/local/opt/obs"
+            "$ENV{HOME}/Library/Application Support/obs-studio"
+        )
+    endif()
+
     # Find libobs
     find_path(LIBOBS_INCLUDE_DIR
         NAMES obs-module.h
         HINTS
             ${OBS_INCLUDE_SEARCH_PATH}
             $ENV{OBS_INCLUDE_DIR}
+            ${OBS_PROGRAM_FILES_PATHS}
+            ${OBS_MACOS_PATHS}
             /usr/include
             /usr/local/include
         PATH_SUFFIXES
+            include
             obs
             libobs
     )
@@ -44,8 +63,15 @@ if(NOT BUILD_TESTS_ONLY)
         HINTS
             ${OBS_LIB_SEARCH_PATH}
             $ENV{OBS_LIB_DIR}
+            ${OBS_PROGRAM_FILES_PATHS}
+            ${OBS_MACOS_PATHS}
             /usr/lib
             /usr/local/lib
+            /usr/lib/x86_64-linux-gnu
+        PATH_SUFFIXES
+            lib
+            bin
+            bin/64bit
     )
 
     if(NOT LIBOBS_INCLUDE_DIR OR NOT LIBOBS_LIB)
