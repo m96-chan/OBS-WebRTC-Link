@@ -212,6 +212,7 @@ jobs:
         name: linux-test-binaries
         path: |
           build/tests/unit/*_test
+          VERSION
         retention-days: 1
 
     - name: Upload build logs
@@ -279,6 +280,7 @@ jobs:
         name: windows-test-binaries
         path: |
           build/tests/unit/Release/*_test.exe
+          VERSION
         retention-days: 1
 
     - name: Upload build logs
@@ -349,6 +351,7 @@ jobs:
         name: macos-test-binaries
         path: |
           build/tests/unit/*_test
+          VERSION
         retention-days: 1
 
     - name: Upload build logs

@@ -29,10 +29,11 @@ protected:
     std::string readVersionFile() {
         // Try multiple possible paths for VERSION file
         std::vector<std::string> paths = {
-            "VERSION",           // Current directory
-            "../VERSION",        // One level up
-            "../../VERSION",     // Two levels up
-            "../../../VERSION"   // Three levels up (for deep build dirs)
+            "VERSION",           // Current directory (CI test execution)
+            "../VERSION",        // One level up (local build/tests/unit)
+            "../../VERSION",     // Two levels up (repository root from build/tests/unit)
+            "../../../VERSION",  // Three levels up (for deep build dirs)
+            "../../../../VERSION" // Four levels up (Windows Release build)
         };
 
         for (const auto& path : paths) {
