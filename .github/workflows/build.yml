@@ -304,6 +304,23 @@ jobs:
         path: obs-webrtc-link-*-windows-x64.zip
         retention-days: 7
 
+    - name: Install NSIS
+      run: |
+        choco install nsis -y
+
+    - name: Build Windows Installer
+      shell: pwsh
+      run: |
+        cd installer/windows
+        .\build-installer.ps1
+
+    - name: Upload Windows Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-installer
+        path: build/installer/obs-webrtc-link-*-installer.exe
+        retention-days: 7
+
   build-macos:
     name: Build (macOS)
     runs-on: macos-latest
