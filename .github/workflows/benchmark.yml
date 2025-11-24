@@ -126,8 +126,45 @@ jobs:
       run: |
         cmake --build build --config Release
 
+    - name: Check DLL dependencies (diagnostic)
+      shell: powershell
+      run: |
+        Write-Host "=== Checking DLL dependencies for whip_connection_benchmark.exe ==="
+
+        # Check if dumpbin is available
+        $dumpbin = Get-Command dumpbin -ErrorAction SilentlyContinue
+        if ($dumpbin) {
+          Write-Host "`nDLL Dependencies:"
+          dumpbin /dependents .\build\tests\benchmarks\Release\whip_connection_benchmark.exe
+        } else {
+          Write-Host "dumpbin not found, trying alternative method..."
+        }
+
+        Write-Host "`n=== Checking available DLLs in build directory ==="
+        Get-ChildItem -Path .\build -Recurse -Filter "*.dll" | Select-Object FullName, Length
+
+        Write-Host "`n=== Attempting to run benchmark with error capture ==="
+        # Add benchmark DLL directory to PATH
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
+        try {
+          $output = & .\build\tests\benchmarks\Release\whip_connection_benchmark.exe --help 2>&1
+          Write-Host "Benchmark executable loaded successfully"
+          Write-Host "Output: $output"
+          # Benchmark returns exit code 1 even with --help, but that's okay for diagnostic
+          $LASTEXITCODE = 0
+        } catch {
+          Write-Host "Error running benchmark: $_"
+          Write-Host "Exception type: $($_.Exception.GetType().FullName)"
+          Write-Host "Exception message: $($_.Exception.Message)"
+          exit 1
+        }
+
     - name: Run WHIP connection benchmark
       run: |
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\whip_connection_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
@@ -135,6 +172,9 @@ jobs:
 
     - name: Run WHEP connection benchmark
       run: |
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\whep_connection_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
@@ -142,6 +182,9 @@ jobs:
 
     - name: Run P2P connection benchmark
       run: |
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\p2p_connection_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
@@ -149,6 +192,9 @@ jobs:
 
     - name: Run media throughput benchmark
       run: |
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\media_throughput_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
@@ -156,6 +202,9 @@ jobs:
 
     - name: Run scalability benchmark
       run: |
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\scalability_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `

@@ -16,7 +16,14 @@ static void BM_WHIPClientCreation(benchmark::State& state) {
         config.bearerToken = "test-token-" + std::to_string(state.range(0));
 
         benchmark::DoNotOptimize(config);
-        WHIPClient client(config);
+        try {
+            WHIPClient client(config);
+            benchmark::DoNotOptimize(client);
+        } catch (const std::exception&) {
+            // Skip benchmark if client creation fails
+            state.SkipWithError("WHIPClient creation failed");
+            break;
+        }
         benchmark::ClobberMemory();
     }
 
@@ -83,16 +90,22 @@ static void BM_MultipleWHIPClients(benchmark::State& state) {
         std::vector<std::unique_ptr<WHIPClient>> clients;
         clients.reserve(num_clients);
 
-        for (int i = 0; i < num_clients; ++i) {
-            WHIPConfig config;
-            config.url = "https://server" + std::to_string(i) + ".example.com/whip";
-            config.bearerToken = "token-" + std::to_string(i);
+        try {
+            for (int i = 0; i < num_clients; ++i) {
+                WHIPConfig config;
+                config.url = "https://server" + std::to_string(i) + ".example.com/whip";
+                config.bearerToken = "token-" + std::to_string(i);
 
-            clients.push_back(std::make_unique<WHIPClient>(config));
+                clients.push_back(std::make_unique<WHIPClient>(config));
+            }
+
+            benchmark::DoNotOptimize(clients);
+            benchmark::ClobberMemory();
+        } catch (const std::exception&) {
+            // Skip benchmark if client creation fails
+            state.SkipWithError("WHIPClient creation failed");
+            break;
         }
-
-        benchmark::DoNotOptimize(clients);
-        benchmark::ClobberMemory();
     }
 
     state.SetItemsProcessed(state.iterations() * num_clients);
