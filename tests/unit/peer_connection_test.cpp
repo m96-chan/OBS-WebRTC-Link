@@ -196,11 +196,12 @@ TEST_F(PeerConnectionTest, AddIceCandidateSucceeds) {
 
     // Add a valid ICE candidate
     EXPECT_NO_THROW({
-        pc->addIceCandidate(
-            "candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host",
-            "0"
-        );
+        pc->addIceCandidate("candidate:1 1 UDP 2130706431 192.168.1.1 54321 typ host",
+                            "0");
     });
+
+    // Wait for cleanup before destroying connection
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Move semantics work correctly
