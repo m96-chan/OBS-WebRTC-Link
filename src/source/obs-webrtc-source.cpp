@@ -223,6 +223,7 @@ static void webrtc_source_get_defaults(obs_data_t *settings)
     obs_data_set_default_string(settings, "audio_codec", "opus");
     obs_data_set_default_int(settings, "audio_bitrate", 128);
     obs_data_set_default_string(settings, "token", "");
+    obs_data_set_default_string(settings, "session_id", "");
 }
 
 #ifdef ENABLE_QT_UI
@@ -253,6 +254,7 @@ static bool webrtc_source_open_settings(obs_properties_t *props, obs_property_t 
     const char *audio_codec = obs_data_get_string(settings, "audio_codec");
     int audio_bitrate = obs_data_get_int(settings, "audio_bitrate");
     const char *token = obs_data_get_string(settings, "token");
+    const char *session_id = obs_data_get_string(settings, "session_id");
 
     dialog.setServerUrl(QString::fromUtf8(server_url));
     dialog.setVideoCodec(QString::fromUtf8(video_codec).toLower());
@@ -261,6 +263,7 @@ static bool webrtc_source_open_settings(obs_properties_t *props, obs_property_t 
     dialog.setAudioCodec(QString::fromUtf8(audio_codec).toLower());
     dialog.setAudioBitrate(audio_bitrate);
     dialog.setToken(QString::fromUtf8(token));
+    dialog.setSessionId(QString::fromUtf8(session_id));
 
     // Show dialog and save settings if accepted
     if (dialog.exec() == QDialog::Accepted) {
@@ -271,6 +274,7 @@ static bool webrtc_source_open_settings(obs_properties_t *props, obs_property_t 
         obs_data_set_string(settings, "audio_codec", dialog.getAudioCodec().toUtf8().constData());
         obs_data_set_int(settings, "audio_bitrate", dialog.getAudioBitrate());
         obs_data_set_string(settings, "token", dialog.getToken().toUtf8().constData());
+        obs_data_set_string(settings, "session_id", dialog.getSessionId().toUtf8().constData());
 
         // Trigger source update
         obs_source_update(source_data->source, settings);
