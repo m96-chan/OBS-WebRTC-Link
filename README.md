@@ -62,10 +62,38 @@ graph LR
 
 ---
 
-## 📦 Installation (Windows)
+## 📦 Installation
 
-1. Download the installer or ZIP from Releases.
-2. Install to your OBS plugin directory.
+### Windows (Installer)
+
+1. Download `obs-webrtc-link-{version}-installer.exe` from [Releases](https://github.com/m96-chan/OBS-WebRTC-Link/releases)
+2. Run the installer as Administrator
+3. The installer will automatically detect your OBS Studio installation
+4. Follow the installation wizard
+5. Restart OBS Studio
+
+### Windows (Manual Installation)
+
+1. Download `obs-webrtc-link-{version}-windows.zip` from [Releases](https://github.com/m96-chan/OBS-WebRTC-Link/releases)
+2. Extract the contents
+3. Copy `obs-webrtc-link.dll` to:
+   - `C:\Program Files\obs-studio\obs-plugins\64bit\` (default location)
+   - Or your OBS Studio installation: `<OBS-Install-Dir>\obs-plugins\64bit\`
+4. Restart OBS Studio
+
+### Linux
+
+1. Download `obs-webrtc-link-{version}-linux-x86_64.tar.gz` from [Releases](https://github.com/m96-chan/OBS-WebRTC-Link/releases)
+2. Extract and copy to OBS plugins directory:
+   ```bash
+   tar -xzf obs-webrtc-link-*-linux-x86_64.tar.gz
+   sudo cp obs-webrtc-link.so /usr/lib/obs-plugins/
+   ```
+3. Restart OBS Studio
+
+### macOS
+
+See [Build from Source](#-build-from-source) section for macOS installation.
 
 ---
 
