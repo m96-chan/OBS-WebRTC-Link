@@ -602,7 +602,7 @@ TEST_F(PeerConnectionTest, OfferCreationPerformance) {
 // - Explicit renegotiation support in libdatachannel (tracked in P3 issue #62)
 // - Alternative implementation approach using setLocalDescription (tracked in P1 issue #61)
 // See: Issue #61 (P1) and Issue #62 (P3)
-TEST_F(PeerConnectionTest, DISABLED_MultipleOfferAnswerExchanges) {
+TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
     auto config1 = createTestConfig();
     auto pc1 = std::make_unique<PeerConnection>(config1);
 
