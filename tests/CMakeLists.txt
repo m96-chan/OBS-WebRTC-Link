@@ -17,5 +17,5 @@ endif()
 # Unit tests
 add_subdirectory(unit)
 
-# Integration tests (to be added later)
-# add_subdirectory(integration)
+# Integration tests
+add_subdirectory(integration)

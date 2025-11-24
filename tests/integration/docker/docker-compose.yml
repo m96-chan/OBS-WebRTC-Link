@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: obs-webrtc-test-livekit
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"     # HTTP API
+      - "7881:7881"     # TURN UDP
+      - "50000-50100:50000-50100/udp"  # RTC UDP ports
+    environment:
+      - LIVEKIT_API_KEY=APItest123
+      - LIVEKIT_API_SECRET=SECRETtest456
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    networks:
+      - obs-webrtc-test
+
+networks:
+  obs-webrtc-test:
+    driver: bridge
