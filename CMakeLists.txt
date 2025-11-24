@@ -329,7 +329,7 @@ endif()
 enable_testing()
 
 # Add tests subdirectory
-if(BUILD_TESTING AND GTest_FOUND)
+if((BUILD_TESTING AND GTest_FOUND) OR (BUILD_BENCHMARKS AND benchmark_FOUND))
     add_subdirectory(tests)
 endif()
 
