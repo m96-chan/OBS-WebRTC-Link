@@ -17,5 +17,11 @@ endif()
 # Unit tests
 add_subdirectory(unit)
 
-# Integration tests
-add_subdirectory(integration)
+# Integration tests (optional)
+option(BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
+if(BUILD_INTEGRATION_TESTS AND nlohmann_json_FOUND)
+    add_subdirectory(integration)
+    message(STATUS "Integration tests enabled")
+else()
+    message(STATUS "Integration tests disabled (enable with -DBUILD_INTEGRATION_TESTS=ON)")
+endif()
