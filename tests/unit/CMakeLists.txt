@@ -231,6 +231,29 @@ else()
     gtest_discover_tests(version_test)
 endif()
 
+# Audio-only mode test executable
+add_executable(audio_only_mode_test
+    audio_only_mode_test.cpp
+)
+
+target_include_directories(audio_only_mode_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(audio_only_mode_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover audio-only mode tests
+if(WIN32)
+    gtest_add_tests(TARGET audio_only_mode_test)
+else()
+    gtest_discover_tests(audio_only_mode_test)
+endif()
+
 # Settings Dialog test executable (requires Qt)
 if(QT_FOUND)
     add_executable(settings_dialog_test

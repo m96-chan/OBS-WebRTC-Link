@@ -32,6 +32,14 @@ protected:
     std::vector<std::pair<std::string, std::string>> iceCandidates;
     std::vector<std::pair<SdpType, std::string>> localDescriptions;
 
+    // Helper struct to hold independent callback state
+    struct CallbackState {
+        std::vector<std::string> logMessages;
+        std::vector<ConnectionState> stateChanges;
+        std::vector<std::pair<std::string, std::string>> iceCandidates;
+        std::vector<std::pair<SdpType, std::string>> localDescriptions;
+    };
+
     PeerConnectionConfig createTestConfig() {
         PeerConnectionConfig config;
         config.iceServers = {"stun:stun.l.google.com:19302"};
@@ -49,6 +57,31 @@ protected:
 
         config.localDescriptionCallback = [this](SdpType type, const std::string& sdp) {
             localDescriptions.push_back({type, sdp});
+        };
+
+        return config;
+    }
+
+    // Create config with independent callback state (for tests using multiple PeerConnections)
+    PeerConnectionConfig createTestConfigWithState(CallbackState& state) {
+        PeerConnectionConfig config;
+        config.iceServers = {"stun:stun.l.google.com:19302"};
+
+        config.logCallback = [&state](LogLevel level, const std::string& message) {
+            state.logMessages.push_back(message);
+        };
+
+        config.stateCallback = [&state](ConnectionState s) {
+            state.stateChanges.push_back(s);
+        };
+
+        config.iceCandidateCallback = [&state](const std::string& candidate,
+                                              const std::string& mid) {
+            state.iceCandidates.push_back({candidate, mid});
+        };
+
+        config.localDescriptionCallback = [&state](SdpType type, const std::string& sdp) {
+            state.localDescriptions.push_back({type, sdp});
         };
 
         return config;
@@ -89,28 +122,29 @@ TEST_F(PeerConnectionTest, CreateOfferGeneratesLocalDescription) {
 
 // Test: Create answer after setting remote offer
 TEST_F(PeerConnectionTest, CreateAnswerAfterRemoteOffer) {
-    // Create offerer
-    auto config1 = createTestConfig();
+    // Create offerer with independent state
+    CallbackState offererState, answererState;
+
+    auto config1 = createTestConfigWithState(offererState);
     auto offerer = std::make_unique<PeerConnection>(config1);
     offerer->createOffer();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(localDescriptions.empty());
+    ASSERT_FALSE(offererState.localDescriptions.empty());
 
-    std::string offerSdp = localDescriptions[0].second;
-    localDescriptions.clear();
+    std::string offerSdp = offererState.localDescriptions[0].second;
 
-    // Create answerer
-    auto config2 = createTestConfig();
+    // Create answerer with independent state
+    auto config2 = createTestConfigWithState(answererState);
     auto answerer = std::make_unique<PeerConnection>(config2);
     answerer->setRemoteDescription(SdpType::Offer, offerSdp);
     answerer->createAnswer();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    ASSERT_FALSE(localDescriptions.empty());
-    EXPECT_EQ(localDescriptions[0].first, SdpType::Answer);
-    EXPECT_FALSE(localDescriptions[0].second.empty());
+    ASSERT_FALSE(answererState.localDescriptions.empty());
+    EXPECT_EQ(answererState.localDescriptions[0].first, SdpType::Answer);
+    EXPECT_FALSE(answererState.localDescriptions[0].second.empty());
 }
 
 // Test: ICE candidates are collected
@@ -168,16 +202,18 @@ TEST_F(PeerConnectionTest, GetLocalDescriptionAfterOffer) {
 
 // Test: Set remote description succeeds
 TEST_F(PeerConnectionTest, SetRemoteDescriptionSucceeds) {
-    auto config1 = createTestConfig();
+    CallbackState offererState, answererState;
+
+    auto config1 = createTestConfigWithState(offererState);
     auto offerer = std::make_unique<PeerConnection>(config1);
     offerer->createOffer();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(localDescriptions.empty());
+    ASSERT_FALSE(offererState.localDescriptions.empty());
 
-    std::string offerSdp = localDescriptions[0].second;
+    std::string offerSdp = offererState.localDescriptions[0].second;
 
-    auto config2 = createTestConfig();
+    auto config2 = createTestConfigWithState(answererState);
     auto answerer = std::make_unique<PeerConnection>(config2);
 
     EXPECT_NO_THROW({ answerer->setRemoteDescription(SdpType::Offer, offerSdp); });
@@ -225,8 +261,11 @@ TEST_F(PeerConnectionTest, MoveSemantics) {
 
 // Test: Multiple peer connections can coexist
 TEST_F(PeerConnectionTest, MultiplePeerConnectionsCoexist) {
-    auto config1 = createTestConfig();
-    auto config2 = createTestConfig();
+    // Create separate state for each connection to avoid shared callback issues
+    CallbackState state1, state2;
+
+    auto config1 = createTestConfigWithState(state1);
+    auto config2 = createTestConfigWithState(state2);
 
     auto pc1 = std::make_unique<PeerConnection>(config1);
     auto pc2 = std::make_unique<PeerConnection>(config2);
@@ -404,16 +443,18 @@ TEST_F(PeerConnectionTest, GetRemoteDescriptionBeforeSettingReturnsEmpty) {
 
 // Test: Get remote description after setting returns non-empty
 TEST_F(PeerConnectionTest, GetRemoteDescriptionAfterSetting) {
-    auto config1 = createTestConfig();
+    CallbackState offererState, answererState;
+
+    auto config1 = createTestConfigWithState(offererState);
     auto offerer = std::make_unique<PeerConnection>(config1);
     offerer->createOffer();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(localDescriptions.empty());
+    ASSERT_FALSE(offererState.localDescriptions.empty());
 
-    std::string offerSdp = localDescriptions[0].second;
+    std::string offerSdp = offererState.localDescriptions[0].second;
 
-    auto config2 = createTestConfig();
+    auto config2 = createTestConfigWithState(answererState);
     auto answerer = std::make_unique<PeerConnection>(config2);
     answerer->setRemoteDescription(SdpType::Offer, offerSdp);
 
