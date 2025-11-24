@@ -296,4 +296,143 @@ TEST_F(SettingsDialogTest, DefaultValuesAreCorrect) {
     EXPECT_EQ(dialog.getToken(), "");
 }
 
+// Issue #15 Tests: Dynamic field visibility based on connection mode
+
+// Test 21: SFU mode shows server URL field
+TEST_F(SettingsDialogTest, SfuModeShowsServerUrlField) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("SFU");
+
+    QLineEdit* serverUrl = dialog.findChild<QLineEdit*>("serverUrlEdit");
+    ASSERT_NE(serverUrl, nullptr);
+    EXPECT_TRUE(serverUrl->isEnabled());
+    EXPECT_TRUE(serverUrl->isVisible());
+}
+
+// Test 22: SFU mode shows token field
+TEST_F(SettingsDialogTest, SfuModeShowsTokenField) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("SFU");
+
+    QLineEdit* token = dialog.findChild<QLineEdit*>("tokenEdit");
+    ASSERT_NE(token, nullptr);
+    EXPECT_TRUE(token->isEnabled());
+    EXPECT_TRUE(token->isVisible());
+}
+
+// Test 23: P2P mode hides server URL field
+TEST_F(SettingsDialogTest, P2pModeHidesServerUrlField) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+
+    QLineEdit* serverUrl = dialog.findChild<QLineEdit*>("serverUrlEdit");
+    ASSERT_NE(serverUrl, nullptr);
+    EXPECT_FALSE(serverUrl->isEnabled()) << "Server URL should be disabled in P2P mode";
+}
+
+// Test 24: P2P mode hides token field
+TEST_F(SettingsDialogTest, P2pModeHidesTokenField) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+
+    QLineEdit* token = dialog.findChild<QLineEdit*>("tokenEdit");
+    ASSERT_NE(token, nullptr);
+    EXPECT_FALSE(token->isEnabled()) << "Token should be disabled in P2P mode";
+}
+
+// Test 25: P2P mode shows session ID field
+TEST_F(SettingsDialogTest, P2pModeShowsSessionIdField) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+
+    QLineEdit* sessionId = dialog.findChild<QLineEdit*>("sessionIdEdit");
+    ASSERT_NE(sessionId, nullptr) << "Session ID field should exist";
+    EXPECT_TRUE(sessionId->isEnabled()) << "Session ID should be enabled in P2P mode";
+    EXPECT_TRUE(sessionId->isVisible()) << "Session ID should be visible in P2P mode";
+}
+
+// Test 26: SFU mode hides session ID field
+TEST_F(SettingsDialogTest, SfuModeHidesSessionIdField) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("SFU");
+
+    QLineEdit* sessionId = dialog.findChild<QLineEdit*>("sessionIdEdit");
+    if (sessionId) {
+        EXPECT_FALSE(sessionId->isEnabled()) << "Session ID should be disabled in SFU mode";
+    }
+}
+
+// Test 27: Can set and get session ID
+TEST_F(SettingsDialogTest, CanSetAndGetSessionId) {
+    SettingsDialog dialog(nullptr);
+
+    QString testSessionId = "test-session-12345";
+    dialog.setSessionId(testSessionId);
+
+    EXPECT_EQ(dialog.getSessionId(), testSessionId);
+}
+
+// Test 28: Switching from SFU to P2P updates field visibility
+TEST_F(SettingsDialogTest, SwitchingFromSfuToP2pUpdatesVisibility) {
+    SettingsDialog dialog(nullptr);
+
+    // Start with SFU mode
+    dialog.setConnectionMode("SFU");
+    QLineEdit* serverUrl = dialog.findChild<QLineEdit*>("serverUrlEdit");
+    QLineEdit* sessionId = dialog.findChild<QLineEdit*>("sessionIdEdit");
+
+    ASSERT_NE(serverUrl, nullptr);
+    EXPECT_TRUE(serverUrl->isEnabled());
+
+    // Switch to P2P mode
+    dialog.setConnectionMode("P2P");
+
+    EXPECT_FALSE(serverUrl->isEnabled()) << "Server URL should be disabled after switching to P2P";
+    ASSERT_NE(sessionId, nullptr);
+    EXPECT_TRUE(sessionId->isEnabled()) << "Session ID should be enabled after switching to P2P";
+}
+
+// Test 29: Switching from P2P to SFU updates field visibility
+TEST_F(SettingsDialogTest, SwitchingFromP2pToSfuUpdatesVisibility) {
+    SettingsDialog dialog(nullptr);
+
+    // Start with P2P mode
+    dialog.setConnectionMode("P2P");
+    QLineEdit* serverUrl = dialog.findChild<QLineEdit*>("serverUrlEdit");
+    QLineEdit* sessionId = dialog.findChild<QLineEdit*>("sessionIdEdit");
+
+    ASSERT_NE(sessionId, nullptr);
+    EXPECT_TRUE(sessionId->isEnabled());
+
+    // Switch to SFU mode
+    dialog.setConnectionMode("SFU");
+
+    ASSERT_NE(serverUrl, nullptr);
+    EXPECT_TRUE(serverUrl->isEnabled()) << "Server URL should be enabled after switching to SFU";
+    if (sessionId) {
+        EXPECT_FALSE(sessionId->isEnabled()) << "Session ID should be disabled after switching to SFU";
+    }
+}
+
+// Test 30: P2P mode validates session ID is not empty
+TEST_F(SettingsDialogTest, P2pModeValidatesSessionIdNotEmpty) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+    dialog.setSessionId("");
+
+    // In P2P mode, session ID should be required
+    EXPECT_FALSE(dialog.validateSettings()) << "Validation should fail with empty session ID in P2P mode";
+}
+
+// Test 31: P2P mode does not require server URL
+TEST_F(SettingsDialogTest, P2pModeDoesNotRequireServerUrl) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+    dialog.setServerUrl("");
+    dialog.setSessionId("valid-session-id");
+
+    // In P2P mode, server URL is optional
+    EXPECT_TRUE(dialog.validateSettings()) << "Validation should pass without server URL in P2P mode";
+}
+
 } // namespace

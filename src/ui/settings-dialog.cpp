@@ -19,6 +19,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
       connectionModeCombo_(nullptr),
       serverUrlEdit_(nullptr),
       tokenEdit_(nullptr),
+      sessionIdEdit_(nullptr),
       videoCodecCombo_(nullptr),
       videoBitrateSpin_(nullptr),
       audioCodecCombo_(nullptr),
@@ -26,6 +27,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
       okButton_(nullptr),
       cancelButton_(nullptr),
       errorLabel_(nullptr),
+      serverUrlLabel_(nullptr),
+      tokenLabel_(nullptr),
+      sessionIdLabel_(nullptr),
       mainLayout_(nullptr),
       formLayout_(nullptr) {
     setupUi();
@@ -70,18 +74,31 @@ QFormLayout* SettingsDialog::createFormLayout() {
     connectionModeCombo_->addItem(tr("P2P (Peer-to-Peer)"), "P2P");
     layout->addRow(tr("Connection Mode:"), connectionModeCombo_);
 
-    // Server URL
+    // Server URL (SFU mode only)
+    serverUrlLabel_ = new QLabel(tr("Server URL:"), this);
     serverUrlEdit_ = new QLineEdit(this);
     serverUrlEdit_->setObjectName("serverUrlEdit");
     serverUrlEdit_->setPlaceholderText(tr("https://example.com/webrtc"));
-    layout->addRow(tr("Server URL:"), serverUrlEdit_);
+    layout->addRow(serverUrlLabel_, serverUrlEdit_);
 
-    // Token
+    // Token (SFU mode only)
+    tokenLabel_ = new QLabel(tr("Token:"), this);
     tokenEdit_ = new QLineEdit(this);
     tokenEdit_->setObjectName("tokenEdit");
     tokenEdit_->setPlaceholderText(tr("Authentication token (optional)"));
     tokenEdit_->setEchoMode(QLineEdit::Password);
-    layout->addRow(tr("Token:"), tokenEdit_);
+    layout->addRow(tokenLabel_, tokenEdit_);
+
+    // Session ID (P2P mode only)
+    sessionIdLabel_ = new QLabel(tr("Session ID:"), this);
+    sessionIdEdit_ = new QLineEdit(this);
+    sessionIdEdit_->setObjectName("sessionIdEdit");
+    sessionIdEdit_->setPlaceholderText(tr("Enter or generate session ID"));
+    layout->addRow(sessionIdLabel_, sessionIdEdit_);
+    // Initially hide session ID (default mode is SFU)
+    sessionIdLabel_->setVisible(false);
+    sessionIdEdit_->setVisible(false);
+    sessionIdEdit_->setEnabled(false);
 
     // Video codec
     videoCodecCombo_ = new QComboBox(this);
@@ -166,6 +183,10 @@ QString SettingsDialog::getToken() const {
     return tokenEdit_ ? tokenEdit_->text().trimmed() : QString();
 }
 
+QString SettingsDialog::getSessionId() const {
+    return sessionIdEdit_ ? sessionIdEdit_->text().trimmed() : QString();
+}
+
 // Setters
 void SettingsDialog::setServerUrl(const QString& url) {
     if (serverUrlEdit_) {
@@ -218,18 +239,36 @@ void SettingsDialog::setToken(const QString& token) {
     }
 }
 
+void SettingsDialog::setSessionId(const QString& sessionId) {
+    if (sessionIdEdit_) {
+        sessionIdEdit_->setText(sessionId);
+    }
+}
+
 // Validation
 bool SettingsDialog::validateSettings() const {
-    QString url = getServerUrl();
+    QString mode = getConnectionMode();
 
-    // Check if URL is empty
-    if (url.isEmpty()) {
-        return false;
-    }
+    if (mode == "SFU") {
+        // SFU mode requires server URL
+        QString url = getServerUrl();
 
-    // Check URL format
-    if (!isValidUrl(url)) {
-        return false;
+        // Check if URL is empty
+        if (url.isEmpty()) {
+            return false;
+        }
+
+        // Check URL format
+        if (!isValidUrl(url)) {
+            return false;
+        }
+    } else if (mode == "P2P") {
+        // P2P mode requires session ID
+        QString sessionId = getSessionId();
+        if (sessionId.isEmpty()) {
+            return false;
+        }
+        // Server URL is optional in P2P mode
     }
 
     return true;
@@ -265,12 +304,21 @@ void SettingsDialog::onAccepted() {
     errorLabel_->hide();
 
     if (!validateSettings()) {
+        QString mode = getConnectionMode();
         QString url = getServerUrl();
-        if (url.isEmpty()) {
-            showValidationError(tr("Error: Server URL cannot be empty."));
-        } else if (!isValidUrl(url)) {
-            showValidationError(tr("Error: Invalid server URL format. "
-                                   "Please use http:// or https:// protocol."));
+        QString sessionId = getSessionId();
+
+        if (mode == "SFU") {
+            if (url.isEmpty()) {
+                showValidationError(tr("Error: Server URL cannot be empty in SFU mode."));
+            } else if (!isValidUrl(url)) {
+                showValidationError(tr("Error: Invalid server URL format. "
+                                       "Please use http:// or https:// protocol."));
+            }
+        } else if (mode == "P2P") {
+            if (sessionId.isEmpty()) {
+                showValidationError(tr("Error: Session ID cannot be empty in P2P mode."));
+            }
         }
         return;
     }
@@ -284,6 +332,46 @@ void SettingsDialog::onRejected() {
 
 void SettingsDialog::onConnectionModeChanged(int index) {
     Q_UNUSED(index);
-    // Future enhancement: Show/hide fields based on connection mode
-    // For P2P mode, server URL might be optional
+
+    QString mode = getConnectionMode();
+
+    if (mode == "SFU") {
+        // SFU mode: Show server URL and token, hide session ID
+        if (serverUrlLabel_) serverUrlLabel_->setVisible(true);
+        if (serverUrlEdit_) {
+            serverUrlEdit_->setVisible(true);
+            serverUrlEdit_->setEnabled(true);
+        }
+
+        if (tokenLabel_) tokenLabel_->setVisible(true);
+        if (tokenEdit_) {
+            tokenEdit_->setVisible(true);
+            tokenEdit_->setEnabled(true);
+        }
+
+        if (sessionIdLabel_) sessionIdLabel_->setVisible(false);
+        if (sessionIdEdit_) {
+            sessionIdEdit_->setVisible(false);
+            sessionIdEdit_->setEnabled(false);
+        }
+    } else if (mode == "P2P") {
+        // P2P mode: Hide server URL and token, show session ID
+        if (serverUrlLabel_) serverUrlLabel_->setVisible(false);
+        if (serverUrlEdit_) {
+            serverUrlEdit_->setVisible(false);
+            serverUrlEdit_->setEnabled(false);
+        }
+
+        if (tokenLabel_) tokenLabel_->setVisible(false);
+        if (tokenEdit_) {
+            tokenEdit_->setVisible(false);
+            tokenEdit_->setEnabled(false);
+        }
+
+        if (sessionIdLabel_) sessionIdLabel_->setVisible(true);
+        if (sessionIdEdit_) {
+            sessionIdEdit_->setVisible(true);
+            sessionIdEdit_->setEnabled(true);
+        }
+    }
 }

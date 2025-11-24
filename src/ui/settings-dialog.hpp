@@ -50,6 +50,7 @@ public:
     int getVideoBitrate() const;
     int getAudioBitrate() const;
     QString getToken() const;
+    QString getSessionId() const;
 
     // Setters
     void setServerUrl(const QString& url);
@@ -59,6 +60,7 @@ public:
     void setVideoBitrate(int bitrate);
     void setAudioBitrate(int bitrate);
     void setToken(const QString& token);
+    void setSessionId(const QString& sessionId);
 
     /**
      * @brief Validate all settings
@@ -118,6 +120,7 @@ private:
     QComboBox* connectionModeCombo_;
     QLineEdit* serverUrlEdit_;
     QLineEdit* tokenEdit_;
+    QLineEdit* sessionIdEdit_;
     QComboBox* videoCodecCombo_;
     QSpinBox* videoBitrateSpin_;
     QComboBox* audioCodecCombo_;
@@ -125,6 +128,11 @@ private:
     QPushButton* okButton_;
     QPushButton* cancelButton_;
     QLabel* errorLabel_;
+
+    // Labels for dynamic show/hide
+    QLabel* serverUrlLabel_;
+    QLabel* tokenLabel_;
+    QLabel* sessionIdLabel_;
 
     // Layouts
     QVBoxLayout* mainLayout_;
