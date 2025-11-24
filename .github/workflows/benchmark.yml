@@ -126,11 +126,42 @@ jobs:
       run: |
         cmake --build build --config Release
 
+    - name: Check DLL dependencies (diagnostic)
+      shell: powershell
+      run: |
+        Write-Host "=== Checking DLL dependencies for whip_connection_benchmark.exe ==="
+
+        # Check if dumpbin is available
+        $dumpbin = Get-Command dumpbin -ErrorAction SilentlyContinue
+        if ($dumpbin) {
+          Write-Host "`nDLL Dependencies:"
+          dumpbin /dependents .\build\tests\benchmarks\Release\whip_connection_benchmark.exe
+        } else {
+          Write-Host "dumpbin not found, trying alternative method..."
+        }
+
+        Write-Host "`n=== Checking available DLLs in build directory ==="
+        Get-ChildItem -Path .\build -Recurse -Filter "*.dll" | Select-Object FullName, Length
+
+        Write-Host "`n=== Attempting to run benchmark with error capture ==="
+        $env:PATH = "$env:PATH;$PWD\build\Release;$PWD\build\deps\libdatachannel\Release"
+
+        try {
+          $output = & .\build\tests\benchmarks\Release\whip_connection_benchmark.exe --help 2>&1
+          Write-Host "Success! Output: $output"
+        } catch {
+          Write-Host "Error running benchmark: $_"
+          Write-Host "Exception type: $($_.Exception.GetType().FullName)"
+          Write-Host "Exception message: $($_.Exception.Message)"
+        }
+
     - name: Run WHIP connection benchmark
       continue-on-error: true
       id: whip_benchmark
       run: |
-        # Try to run the benchmark and capture any errors
+        # Add build directories to PATH for DLL discovery
+        $env:PATH = "$env:PATH;$PWD\build\Release;$PWD\build\deps\libdatachannel\Release"
+
         $ErrorActionPreference = "Continue"
         try {
           .\build\tests\benchmarks\Release\whip_connection_benchmark.exe `
