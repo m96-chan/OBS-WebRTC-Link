@@ -4,9 +4,11 @@
  */
 
 #include "core/signaling-client.hpp"
+
 #include <nlohmann/json.hpp>
-#include <stdexcept>
+
 #include <mutex>
+#include <stdexcept>
 
 namespace obswebrtc {
 namespace core {
@@ -296,5 +298,5 @@ void SignalingClient::handleMessage(const std::string& message) {
     impl_->handleMessage(message);
 }
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc

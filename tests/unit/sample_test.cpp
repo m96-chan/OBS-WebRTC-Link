@@ -5,8 +5,9 @@
  * Real tests should be added as the plugin functionality is implemented.
  */
 
-#include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
+
+#include <gtest/gtest.h>
 
 // Sample test to verify Google Test is working
 TEST(SampleTest, BasicAssertion) {

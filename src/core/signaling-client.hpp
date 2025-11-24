@@ -24,7 +24,8 @@ using SignalingDisconnectedCallback = std::function<void()>;
 using SignalingErrorCallback = std::function<void(const std::string& error)>;
 using SignalingOfferCallback = std::function<void(const std::string& sdp)>;
 using SignalingAnswerCallback = std::function<void(const std::string& sdp)>;
-using SignalingIceCandidateCallback = std::function<void(const std::string& candidate, const std::string& mid)>;
+using SignalingIceCandidateCallback =
+    std::function<void(const std::string& candidate, const std::string& mid)>;
 
 /**
  * @brief Configuration for SignalingClient
@@ -182,5 +183,5 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc

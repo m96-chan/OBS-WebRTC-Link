@@ -10,6 +10,7 @@
 #pragma once
 
 #include <rtc/rtc.hpp>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -54,7 +55,8 @@ enum class SdpType {
  */
 using LogCallback = std::function<void(LogLevel level, const std::string& message)>;
 using StateChangeCallback = std::function<void(ConnectionState state)>;
-using IceCandidateCallback = std::function<void(const std::string& candidate, const std::string& mid)>;
+using IceCandidateCallback =
+    std::function<void(const std::string& candidate, const std::string& mid)>;
 using LocalDescriptionCallback = std::function<void(SdpType type, const std::string& sdp)>;
 
 /**
@@ -185,5 +187,5 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc
