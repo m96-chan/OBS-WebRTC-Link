@@ -607,4 +607,163 @@ TEST_F(SettingsDialogTest, CopyButtonEnabledWhenSessionIdNotEmpty) {
     EXPECT_TRUE(copyButton->isEnabled()) << "Copy button should be enabled when session ID is not empty";
 }
 
+// Issue #17 Tests: Connection Status Display Implementation
+
+// Test 44: Has connection status indicator
+TEST_F(SettingsDialogTest, HasConnectionStatusIndicator) {
+    SettingsDialog dialog(nullptr);
+
+    QLabel* statusIndicator = dialog.findChild<QLabel*>("connectionStatusIndicator");
+    ASSERT_NE(statusIndicator, nullptr) << "Connection status indicator should exist";
+    EXPECT_FALSE(statusIndicator->text().isEmpty()) << "Status indicator should have text";
+}
+
+// Test 45: Can set connection status to Disconnected
+TEST_F(SettingsDialogTest, CanSetConnectionStatusDisconnected) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setConnectionStatus("Disconnected");
+
+    QString status = dialog.getConnectionStatus();
+    EXPECT_EQ(status, "Disconnected");
+}
+
+// Test 46: Can set connection status to Connecting
+TEST_F(SettingsDialogTest, CanSetConnectionStatusConnecting) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setConnectionStatus("Connecting");
+
+    QString status = dialog.getConnectionStatus();
+    EXPECT_EQ(status, "Connecting");
+}
+
+// Test 47: Can set connection status to Connected
+TEST_F(SettingsDialogTest, CanSetConnectionStatusConnected) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setConnectionStatus("Connected");
+
+    QString status = dialog.getConnectionStatus();
+    EXPECT_EQ(status, "Connected");
+}
+
+// Test 48: Status indicator color changes based on status
+TEST_F(SettingsDialogTest, StatusIndicatorColorChangesWithStatus) {
+    SettingsDialog dialog(nullptr);
+
+    QLabel* statusIndicator = dialog.findChild<QLabel*>("connectionStatusIndicator");
+    ASSERT_NE(statusIndicator, nullptr);
+
+    // Test Disconnected (red)
+    dialog.setConnectionStatus("Disconnected");
+    QString disconnectedStyle = statusIndicator->styleSheet();
+    EXPECT_TRUE(disconnectedStyle.contains("red") || disconnectedStyle.contains("#") || disconnectedStyle.contains("rgb"))
+        << "Disconnected status should have color styling";
+
+    // Test Connecting (yellow/amber)
+    dialog.setConnectionStatus("Connecting");
+    QString connectingStyle = statusIndicator->styleSheet();
+    EXPECT_TRUE(connectingStyle.contains("yellow") || connectingStyle.contains("#") || connectingStyle.contains("rgb"))
+        << "Connecting status should have color styling";
+
+    // Test Connected (green)
+    dialog.setConnectionStatus("Connected");
+    QString connectedStyle = statusIndicator->styleSheet();
+    EXPECT_TRUE(connectedStyle.contains("green") || connectedStyle.contains("#") || connectedStyle.contains("rgb"))
+        << "Connected status should have color styling";
+}
+
+// Test 49: Has connection statistics display area
+TEST_F(SettingsDialogTest, HasConnectionStatisticsDisplay) {
+    SettingsDialog dialog(nullptr);
+
+    QLabel* statsDisplay = dialog.findChild<QLabel*>("connectionStatsLabel");
+    ASSERT_NE(statsDisplay, nullptr) << "Connection statistics display should exist";
+}
+
+// Test 50: Can update connection statistics
+TEST_F(SettingsDialogTest, CanUpdateConnectionStatistics) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.updateConnectionStats(2500, 0.5);
+
+    QLabel* statsLabel = dialog.findChild<QLabel*>("connectionStatsLabel");
+    ASSERT_NE(statsLabel, nullptr);
+
+    QString statsText = statsLabel->text();
+    EXPECT_TRUE(statsText.contains("2500") || statsText.contains("2.5"))
+        << "Stats should display bitrate";
+    EXPECT_TRUE(statsText.contains("0.5") || statsText.contains("0.50"))
+        << "Stats should display packet loss";
+}
+
+// Test 51: Has error message display area
+TEST_F(SettingsDialogTest, HasErrorMessageDisplayArea) {
+    SettingsDialog dialog(nullptr);
+
+    QLabel* errorDisplay = dialog.findChild<QLabel*>("connectionErrorLabel");
+    ASSERT_NE(errorDisplay, nullptr) << "Error message display area should exist";
+}
+
+// Test 52: Can display error message
+TEST_F(SettingsDialogTest, CanDisplayErrorMessage) {
+    SettingsDialog dialog(nullptr);
+
+    QString errorMsg = "Failed to connect to server";
+    dialog.setConnectionError(errorMsg);
+
+    QLabel* errorLabel = dialog.findChild<QLabel*>("connectionErrorLabel");
+    ASSERT_NE(errorLabel, nullptr);
+
+    EXPECT_TRUE(errorLabel->isVisible()) << "Error label should be visible when error is set";
+    EXPECT_EQ(errorLabel->text(), errorMsg) << "Error label should display the error message";
+}
+
+// Test 53: Error message display is hidden by default
+TEST_F(SettingsDialogTest, ErrorMessageHiddenByDefault) {
+    SettingsDialog dialog(nullptr);
+
+    QLabel* errorLabel = dialog.findChild<QLabel*>("connectionErrorLabel");
+    ASSERT_NE(errorLabel, nullptr);
+
+    EXPECT_FALSE(errorLabel->isVisible()) << "Error label should be hidden by default";
+}
+
+// Test 54: Can clear error message
+TEST_F(SettingsDialogTest, CanClearErrorMessage) {
+    SettingsDialog dialog(nullptr);
+
+    // First set an error
+    dialog.setConnectionError("Test error");
+
+    // Then clear it
+    dialog.clearConnectionError();
+
+    QLabel* errorLabel = dialog.findChild<QLabel*>("connectionErrorLabel");
+    ASSERT_NE(errorLabel, nullptr);
+
+    EXPECT_FALSE(errorLabel->isVisible()) << "Error label should be hidden after clearing";
+    EXPECT_TRUE(errorLabel->text().isEmpty()) << "Error text should be empty after clearing";
+}
+
+// Test 55: Default connection status is Disconnected
+TEST_F(SettingsDialogTest, DefaultConnectionStatusIsDisconnected) {
+    SettingsDialog dialog(nullptr);
+
+    QString status = dialog.getConnectionStatus();
+    EXPECT_EQ(status, "Disconnected") << "Default connection status should be Disconnected";
+}
+
+// Test 56: Connection statistics display shows zero values initially
+TEST_F(SettingsDialogTest, ConnectionStatsShowZeroInitially) {
+    SettingsDialog dialog(nullptr);
+
+    QLabel* statsLabel = dialog.findChild<QLabel*>("connectionStatsLabel");
+    ASSERT_NE(statsLabel, nullptr);
+
+    QString statsText = statsLabel->text();
+    EXPECT_TRUE(statsText.contains("0")) << "Initial stats should show zero values";
+}
+
 } // namespace
