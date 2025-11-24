@@ -30,10 +30,6 @@ static void BM_WHEPConfigValidation(benchmark::State& state) {
         WHEPConfig config;
         config.url = "https://example.com/whep/endpoint";
         config.bearerToken = "bearer-token-123456789";
-        config.iceServers = {
-            {{"urls", "stun:stun.l.google.com:19302"}},
-            {{"urls", "turn:turn.example.com:3478"}, {"username", "user"}, {"credential", "pass"}}
-        };
 
         benchmark::DoNotOptimize(config);
 
@@ -108,11 +104,6 @@ static void BM_WHEPConfigCopy(benchmark::State& state) {
     WHEPConfig original;
     original.url = "https://example.com/whep";
     original.bearerToken = "bearer-token-with-long-string-data-for-testing";
-    original.iceServers = {
-        {{"urls", "stun:stun1.l.google.com:19302"}},
-        {{"urls", "stun:stun2.l.google.com:19302"}},
-        {{"urls", "turn:turn.example.com:3478"}, {"username", "testuser"}, {"credential", "testpass"}}
-    };
 
     for (auto _ : state) {
         WHEPConfig copy = original;

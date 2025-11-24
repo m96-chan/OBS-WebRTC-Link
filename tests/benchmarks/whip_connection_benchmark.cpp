@@ -30,10 +30,6 @@ static void BM_WHIPConfigValidation(benchmark::State& state) {
         WHIPConfig config;
         config.url = "https://example.com/whip/endpoint";
         config.bearerToken = "bearer-token-123456789";
-        config.iceServers = {
-            {{"urls", "stun:stun.l.google.com:19302"}},
-            {{"urls", "turn:turn.example.com:3478"}, {"username", "user"}, {"credential", "pass"}}
-        };
 
         benchmark::DoNotOptimize(config);
 
@@ -108,11 +104,6 @@ static void BM_WHIPConfigCopy(benchmark::State& state) {
     WHIPConfig original;
     original.url = "https://example.com/whip";
     original.bearerToken = "bearer-token-with-long-string-data-for-testing";
-    original.iceServers = {
-        {{"urls", "stun:stun1.l.google.com:19302"}},
-        {{"urls", "stun:stun2.l.google.com:19302"}},
-        {{"urls", "turn:turn.example.com:3478"}, {"username", "testuser"}, {"credential", "testpass"}}
-    };
 
     for (auto _ : state) {
         WHIPConfig copy = original;
