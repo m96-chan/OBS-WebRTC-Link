@@ -1,8 +1,5 @@
 # Unit tests for OBS WebRTC Link plugin
 
-# Enable testing
-include(GoogleTest)
-
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
@@ -14,8 +11,13 @@ if(LIBOBS_INCLUDE_DIR)
     include_directories(${LIBOBS_INCLUDE_DIR})
 endif()
 
-# Unit tests
-add_subdirectory(unit)
+# Unit tests (only when BUILD_TESTING is ON)
+if(BUILD_TESTING AND GTest_FOUND)
+    # Enable testing
+    include(GoogleTest)
+
+    add_subdirectory(unit)
+endif()
 
 # Integration tests (to be added later)
 # add_subdirectory(integration)
