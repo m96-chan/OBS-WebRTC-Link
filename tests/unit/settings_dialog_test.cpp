@@ -11,6 +11,8 @@
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QRegularExpression>
+#include <QCheckBox>
+#include <QGroupBox>
 #include "ui/settings-dialog.hpp"
 
 namespace {
@@ -764,6 +766,174 @@ TEST_F(SettingsDialogTest, ConnectionStatsShowZeroInitially) {
 
     QString statsText = statsLabel->text();
     EXPECT_TRUE(statsText.contains("0")) << "Initial stats should show zero values";
+}
+
+// Test 57: Audio-only mode checkbox exists
+TEST_F(SettingsDialogTest, AudioOnlyModeCheckboxExists) {
+    SettingsDialog dialog(nullptr);
+
+    QCheckBox* audioOnlyCheckbox = dialog.findChild<QCheckBox*>("audioOnlyModeCheckbox");
+    ASSERT_NE(audioOnlyCheckbox, nullptr) << "Audio-only mode checkbox should exist";
+}
+
+// Test 58: Audio-only mode is disabled by default
+TEST_F(SettingsDialogTest, AudioOnlyModeDisabledByDefault) {
+    SettingsDialog dialog(nullptr);
+
+    EXPECT_FALSE(dialog.isAudioOnlyMode()) << "Audio-only mode should be disabled by default";
+}
+
+// Test 59: Can enable audio-only mode
+TEST_F(SettingsDialogTest, CanEnableAudioOnlyMode) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setAudioOnlyMode(true);
+    EXPECT_TRUE(dialog.isAudioOnlyMode()) << "Audio-only mode should be enabled";
+}
+
+// Test 60: Audio quality preset combo box exists
+TEST_F(SettingsDialogTest, AudioQualityPresetComboExists) {
+    SettingsDialog dialog(nullptr);
+
+    QComboBox* qualityCombo = dialog.findChild<QComboBox*>("audioQualityPresetCombo");
+    ASSERT_NE(qualityCombo, nullptr) << "Audio quality preset combo should exist";
+    EXPECT_EQ(qualityCombo->count(), 3) << "Should have 3 quality presets (Low, Medium, High)";
+}
+
+// Test 61: Default audio quality preset is Medium
+TEST_F(SettingsDialogTest, DefaultAudioQualityPresetIsMedium) {
+    SettingsDialog dialog(nullptr);
+
+    QString preset = dialog.getAudioQualityPreset();
+    EXPECT_EQ(preset, "medium") << "Default audio quality preset should be Medium";
+}
+
+// Test 62: Can set audio quality preset to High
+TEST_F(SettingsDialogTest, CanSetAudioQualityPresetHigh) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setAudioQualityPreset("high");
+    EXPECT_EQ(dialog.getAudioQualityPreset(), "high") << "Audio quality preset should be High";
+}
+
+// Test 63: Can set audio quality preset to Low
+TEST_F(SettingsDialogTest, CanSetAudioQualityPresetLow) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setAudioQualityPreset("low");
+    EXPECT_EQ(dialog.getAudioQualityPreset(), "low") << "Audio quality preset should be Low";
+}
+
+// Test 64: Echo cancellation checkbox exists
+TEST_F(SettingsDialogTest, EchoCancellationCheckboxExists) {
+    SettingsDialog dialog(nullptr);
+
+    QCheckBox* echoCheckbox = dialog.findChild<QCheckBox*>("echoCancellationCheckbox");
+    ASSERT_NE(echoCheckbox, nullptr) << "Echo cancellation checkbox should exist";
+}
+
+// Test 65: Echo cancellation is enabled by default
+TEST_F(SettingsDialogTest, EchoCancellationEnabledByDefault) {
+    SettingsDialog dialog(nullptr);
+
+    EXPECT_TRUE(dialog.isEchoCancellationEnabled()) << "Echo cancellation should be enabled by default";
+}
+
+// Test 66: Can disable echo cancellation
+TEST_F(SettingsDialogTest, CanDisableEchoCancellation) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setEchoCancellation(false);
+    EXPECT_FALSE(dialog.isEchoCancellationEnabled()) << "Echo cancellation should be disabled";
+}
+
+// Test 67: Noise suppression checkbox exists
+TEST_F(SettingsDialogTest, NoiseSuppressionCheckboxExists) {
+    SettingsDialog dialog(nullptr);
+
+    QCheckBox* noiseCheckbox = dialog.findChild<QCheckBox*>("noiseSuppressionCheckbox");
+    ASSERT_NE(noiseCheckbox, nullptr) << "Noise suppression checkbox should exist";
+}
+
+// Test 68: Noise suppression is enabled by default
+TEST_F(SettingsDialogTest, NoiseSuppressionEnabledByDefault) {
+    SettingsDialog dialog(nullptr);
+
+    EXPECT_TRUE(dialog.isNoiseSuppressionEnabled()) << "Noise suppression should be enabled by default";
+}
+
+// Test 69: Can disable noise suppression
+TEST_F(SettingsDialogTest, CanDisableNoiseSuppression) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setNoiseSuppression(false);
+    EXPECT_FALSE(dialog.isNoiseSuppressionEnabled()) << "Noise suppression should be disabled";
+}
+
+// Test 70: Automatic gain control checkbox exists
+TEST_F(SettingsDialogTest, AutomaticGainControlCheckboxExists) {
+    SettingsDialog dialog(nullptr);
+
+    QCheckBox* agcCheckbox = dialog.findChild<QCheckBox*>("automaticGainControlCheckbox");
+    ASSERT_NE(agcCheckbox, nullptr) << "Automatic gain control checkbox should exist";
+}
+
+// Test 71: Automatic gain control is disabled by default
+TEST_F(SettingsDialogTest, AutomaticGainControlDisabledByDefault) {
+    SettingsDialog dialog(nullptr);
+
+    EXPECT_FALSE(dialog.isAutomaticGainControlEnabled()) << "Automatic gain control should be disabled by default";
+}
+
+// Test 72: Can enable automatic gain control
+TEST_F(SettingsDialogTest, CanEnableAutomaticGainControl) {
+    SettingsDialog dialog(nullptr);
+
+    dialog.setAutomaticGainControl(true);
+    EXPECT_TRUE(dialog.isAutomaticGainControlEnabled()) << "Automatic gain control should be enabled";
+}
+
+// Test 73: Audio-only settings group box exists
+TEST_F(SettingsDialogTest, AudioOnlySettingsGroupBoxExists) {
+    SettingsDialog dialog(nullptr);
+
+    QGroupBox* groupBox = dialog.findChild<QGroupBox*>("audioOnlyGroupBox");
+    ASSERT_NE(groupBox, nullptr) << "Audio-only settings group box should exist";
+}
+
+// Test 74: Audio-only settings group box is hidden by default
+TEST_F(SettingsDialogTest, AudioOnlySettingsGroupBoxHiddenByDefault) {
+    SettingsDialog dialog(nullptr);
+
+    QGroupBox* groupBox = dialog.findChild<QGroupBox*>("audioOnlyGroupBox");
+    ASSERT_NE(groupBox, nullptr);
+
+    EXPECT_FALSE(groupBox->isVisible()) << "Audio-only settings group box should be hidden by default";
+}
+
+// Test 75: Enabling audio-only mode shows settings group box
+TEST_F(SettingsDialogTest, EnablingAudioOnlyModeShowsGroupBox) {
+    SettingsDialog dialog(nullptr);
+
+    QGroupBox* groupBox = dialog.findChild<QGroupBox*>("audioOnlyGroupBox");
+    ASSERT_NE(groupBox, nullptr);
+
+    dialog.setAudioOnlyMode(true);
+    EXPECT_TRUE(groupBox->isVisible()) << "Audio-only settings group box should be visible when audio-only mode is enabled";
+}
+
+// Test 76: Enabling audio-only mode disables video settings
+TEST_F(SettingsDialogTest, EnablingAudioOnlyModeDisablesVideoSettings) {
+    SettingsDialog dialog(nullptr);
+
+    QComboBox* videoCodec = dialog.findChild<QComboBox*>("videoCodecCombo");
+    QSpinBox* videoBitrate = dialog.findChild<QSpinBox*>("videoBitrateSpin");
+    ASSERT_NE(videoCodec, nullptr);
+    ASSERT_NE(videoBitrate, nullptr);
+
+    dialog.setAudioOnlyMode(true);
+    EXPECT_FALSE(videoCodec->isEnabled()) << "Video codec should be disabled in audio-only mode";
+    EXPECT_FALSE(videoBitrate->isEnabled()) << "Video bitrate should be disabled in audio-only mode";
 }
 
 } // namespace

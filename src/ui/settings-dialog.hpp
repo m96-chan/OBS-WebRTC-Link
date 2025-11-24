@@ -16,6 +16,8 @@ class QVBoxLayout;
 class QHBoxLayout;
 class QFormLayout;
 class QDialogButtonBox;
+class QCheckBox;
+class QGroupBox;
 
 /**
  * @brief Settings dialog for WebRTC connection configuration
@@ -52,6 +54,11 @@ public:
     QString getToken() const;
     QString getSessionId() const;
     QString getConnectionStatus() const;
+    bool isAudioOnlyMode() const;
+    QString getAudioQualityPreset() const;
+    bool isEchoCancellationEnabled() const;
+    bool isNoiseSuppressionEnabled() const;
+    bool isAutomaticGainControlEnabled() const;
 
     // Setters
     void setServerUrl(const QString& url);
@@ -66,6 +73,11 @@ public:
     void setConnectionError(const QString& error);
     void clearConnectionError();
     void updateConnectionStats(int bitrateKbps, double packetLossPercent);
+    void setAudioOnlyMode(bool enabled);
+    void setAudioQualityPreset(const QString& preset);
+    void setEchoCancellation(bool enabled);
+    void setNoiseSuppression(bool enabled);
+    void setAutomaticGainControl(bool enabled);
 
     /**
      * @brief Validate all settings
@@ -110,6 +122,18 @@ private slots:
      * @brief Update copy button enabled state based on session ID
      */
     void updateCopyButtonState();
+
+    /**
+     * @brief Handle audio-only mode checkbox change
+     * @param checked true if audio-only mode is enabled
+     */
+    void onAudioOnlyModeChanged(bool checked);
+
+    /**
+     * @brief Handle audio quality preset change
+     * @param index Current index of audio quality preset combo box
+     */
+    void onAudioQualityPresetChanged(int index);
 
 private:
     /**
@@ -163,12 +187,23 @@ private:
     QLabel* serverUrlLabel_;
     QLabel* tokenLabel_;
     QLabel* sessionIdLabel_;
+    QLabel* videoCodecLabel_;
+    QLabel* videoBitrateLabel_;
 
     // Connection status display components
     QLabel* connectionStatusIndicator_;
     QLabel* connectionStatsLabel_;
     QLabel* connectionErrorLabel_;
     QString currentConnectionStatus_;
+
+    // Audio-only mode components
+    QCheckBox* audioOnlyModeCheckbox_;
+    QComboBox* audioQualityPresetCombo_;
+    QCheckBox* echoCancellationCheckbox_;
+    QCheckBox* noiseSuppressionCheckbox_;
+    QCheckBox* automaticGainControlCheckbox_;
+    QGroupBox* audioOnlyGroupBox_;
+    QLabel* audioQualityPresetLabel_;
 
     // Layouts
     QVBoxLayout* mainLayout_;

@@ -16,6 +16,8 @@
 #include <QUuid>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QCheckBox>
+#include <QGroupBox>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent),
@@ -35,10 +37,19 @@ SettingsDialog::SettingsDialog(QWidget* parent)
       serverUrlLabel_(nullptr),
       tokenLabel_(nullptr),
       sessionIdLabel_(nullptr),
+      videoCodecLabel_(nullptr),
+      videoBitrateLabel_(nullptr),
       connectionStatusIndicator_(nullptr),
       connectionStatsLabel_(nullptr),
       connectionErrorLabel_(nullptr),
       currentConnectionStatus_("Disconnected"),
+      audioOnlyModeCheckbox_(nullptr),
+      audioQualityPresetCombo_(nullptr),
+      echoCancellationCheckbox_(nullptr),
+      noiseSuppressionCheckbox_(nullptr),
+      automaticGainControlCheckbox_(nullptr),
+      audioOnlyGroupBox_(nullptr),
+      audioQualityPresetLabel_(nullptr),
       mainLayout_(nullptr),
       formLayout_(nullptr) {
     setupUi();
@@ -99,6 +110,10 @@ void SettingsDialog::setupUi() {
             this, &SettingsDialog::onCopySessionId);
     connect(sessionIdEdit_, &QLineEdit::textChanged,
             this, &SettingsDialog::updateCopyButtonState);
+    connect(audioOnlyModeCheckbox_, &QCheckBox::toggled,
+            this, &SettingsDialog::onAudioOnlyModeChanged);
+    connect(audioQualityPresetCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onAudioQualityPresetChanged);
 
     // Initialize copy button state
     updateCopyButtonState();
@@ -158,16 +173,24 @@ QFormLayout* SettingsDialog::createFormLayout() {
     generateSessionIdButton_->setVisible(false);
     copySessionIdButton_->setVisible(false);
 
+    // Audio-only mode checkbox
+    audioOnlyModeCheckbox_ = new QCheckBox(tr("Enable Audio-Only Mode"), this);
+    audioOnlyModeCheckbox_->setObjectName("audioOnlyModeCheckbox");
+    audioOnlyModeCheckbox_->setToolTip(tr("Disable video transmission and only send audio"));
+    layout->addRow("", audioOnlyModeCheckbox_);
+
     // Video codec
+    videoCodecLabel_ = new QLabel(tr("Video Codec:"), this);
     videoCodecCombo_ = new QComboBox(this);
     videoCodecCombo_->setObjectName("videoCodecCombo");
     videoCodecCombo_->addItem(tr("H.264"), "h264");
     videoCodecCombo_->addItem(tr("VP8"), "vp8");
     videoCodecCombo_->addItem(tr("VP9"), "vp9");
     videoCodecCombo_->addItem(tr("AV1"), "av1");
-    layout->addRow(tr("Video Codec:"), videoCodecCombo_);
+    layout->addRow(videoCodecLabel_, videoCodecCombo_);
 
     // Video bitrate
+    videoBitrateLabel_ = new QLabel(tr("Video Bitrate:"), this);
     videoBitrateSpin_ = new QSpinBox(this);
     videoBitrateSpin_->setObjectName("videoBitrateSpin");
     videoBitrateSpin_->setMinimum(100);
@@ -175,7 +198,7 @@ QFormLayout* SettingsDialog::createFormLayout() {
     videoBitrateSpin_->setSingleStep(100);
     videoBitrateSpin_->setValue(2500);
     videoBitrateSpin_->setSuffix(tr(" kbps"));
-    layout->addRow(tr("Video Bitrate:"), videoBitrateSpin_);
+    layout->addRow(videoBitrateLabel_, videoBitrateSpin_);
 
     // Audio codec
     audioCodecCombo_ = new QComboBox(this);
@@ -187,12 +210,50 @@ QFormLayout* SettingsDialog::createFormLayout() {
     // Audio bitrate
     audioBitrateSpin_ = new QSpinBox(this);
     audioBitrateSpin_->setObjectName("audioBitrateSpin");
-    audioBitrateSpin_->setMinimum(32);
+    audioBitrateSpin_->setMinimum(16);
     audioBitrateSpin_->setMaximum(512);
     audioBitrateSpin_->setSingleStep(8);
     audioBitrateSpin_->setValue(128);
     audioBitrateSpin_->setSuffix(tr(" kbps"));
     layout->addRow(tr("Audio Bitrate:"), audioBitrateSpin_);
+
+    // Audio-only mode group box
+    audioOnlyGroupBox_ = new QGroupBox(tr("Audio-Only Mode Settings"), this);
+    audioOnlyGroupBox_->setObjectName("audioOnlyGroupBox");
+    QFormLayout* audioOnlyLayout = new QFormLayout(audioOnlyGroupBox_);
+
+    // Audio quality preset
+    audioQualityPresetLabel_ = new QLabel(tr("Audio Quality:"), this);
+    audioQualityPresetCombo_ = new QComboBox(this);
+    audioQualityPresetCombo_->setObjectName("audioQualityPresetCombo");
+    audioQualityPresetCombo_->addItem(tr("Low (32 kbps)"), "low");
+    audioQualityPresetCombo_->addItem(tr("Medium (48 kbps)"), "medium");
+    audioQualityPresetCombo_->addItem(tr("High (64 kbps)"), "high");
+    audioQualityPresetCombo_->setCurrentIndex(1); // Default: Medium
+    audioOnlyLayout->addRow(audioQualityPresetLabel_, audioQualityPresetCombo_);
+
+    // Audio processing options
+    echoCancellationCheckbox_ = new QCheckBox(tr("Echo Cancellation"), this);
+    echoCancellationCheckbox_->setObjectName("echoCancellationCheckbox");
+    echoCancellationCheckbox_->setChecked(true); // Enabled by default
+    echoCancellationCheckbox_->setToolTip(tr("Remove echo from audio input"));
+    audioOnlyLayout->addRow("", echoCancellationCheckbox_);
+
+    noiseSuppressionCheckbox_ = new QCheckBox(tr("Noise Suppression"), this);
+    noiseSuppressionCheckbox_->setObjectName("noiseSuppressionCheckbox");
+    noiseSuppressionCheckbox_->setChecked(true); // Enabled by default
+    noiseSuppressionCheckbox_->setToolTip(tr("Reduce background noise"));
+    audioOnlyLayout->addRow("", noiseSuppressionCheckbox_);
+
+    automaticGainControlCheckbox_ = new QCheckBox(tr("Automatic Gain Control"), this);
+    automaticGainControlCheckbox_->setObjectName("automaticGainControlCheckbox");
+    automaticGainControlCheckbox_->setChecked(false); // Disabled by default
+    automaticGainControlCheckbox_->setToolTip(tr("Automatically adjust audio levels"));
+    audioOnlyLayout->addRow("", automaticGainControlCheckbox_);
+
+    audioOnlyGroupBox_->setLayout(audioOnlyLayout);
+    audioOnlyGroupBox_->setVisible(false); // Hidden by default
+    layout->addRow("", audioOnlyGroupBox_);
 
     return layout;
 }
@@ -536,4 +597,107 @@ void SettingsDialog::updateCopyButtonState() {
 
     bool hasSessionId = !sessionIdEdit_->text().isEmpty();
     copySessionIdButton_->setEnabled(hasSessionId);
+}
+
+// Audio-only mode getters
+bool SettingsDialog::isAudioOnlyMode() const {
+    return audioOnlyModeCheckbox_ ? audioOnlyModeCheckbox_->isChecked() : false;
+}
+
+QString SettingsDialog::getAudioQualityPreset() const {
+    if (!audioQualityPresetCombo_) {
+        return "medium";
+    }
+    return audioQualityPresetCombo_->currentData().toString();
+}
+
+bool SettingsDialog::isEchoCancellationEnabled() const {
+    return echoCancellationCheckbox_ ? echoCancellationCheckbox_->isChecked() : true;
+}
+
+bool SettingsDialog::isNoiseSuppressionEnabled() const {
+    return noiseSuppressionCheckbox_ ? noiseSuppressionCheckbox_->isChecked() : true;
+}
+
+bool SettingsDialog::isAutomaticGainControlEnabled() const {
+    return automaticGainControlCheckbox_ ? automaticGainControlCheckbox_->isChecked() : false;
+}
+
+// Audio-only mode setters
+void SettingsDialog::setAudioOnlyMode(bool enabled) {
+    if (audioOnlyModeCheckbox_) {
+        audioOnlyModeCheckbox_->setChecked(enabled);
+    }
+}
+
+void SettingsDialog::setAudioQualityPreset(const QString& preset) {
+    if (!audioQualityPresetCombo_) {
+        return;
+    }
+
+    int index = audioQualityPresetCombo_->findData(preset);
+    if (index >= 0) {
+        audioQualityPresetCombo_->setCurrentIndex(index);
+    }
+}
+
+void SettingsDialog::setEchoCancellation(bool enabled) {
+    if (echoCancellationCheckbox_) {
+        echoCancellationCheckbox_->setChecked(enabled);
+    }
+}
+
+void SettingsDialog::setNoiseSuppression(bool enabled) {
+    if (noiseSuppressionCheckbox_) {
+        noiseSuppressionCheckbox_->setChecked(enabled);
+    }
+}
+
+void SettingsDialog::setAutomaticGainControl(bool enabled) {
+    if (automaticGainControlCheckbox_) {
+        automaticGainControlCheckbox_->setChecked(enabled);
+    }
+}
+
+// Audio-only mode slots
+void SettingsDialog::onAudioOnlyModeChanged(bool checked) {
+    // Show/hide audio-only settings group box
+    if (audioOnlyGroupBox_) {
+        audioOnlyGroupBox_->setVisible(checked);
+    }
+
+    // Enable/disable video settings
+    if (videoCodecLabel_) videoCodecLabel_->setEnabled(!checked);
+    if (videoCodecCombo_) videoCodecCombo_->setEnabled(!checked);
+    if (videoBitrateLabel_) videoBitrateLabel_->setEnabled(!checked);
+    if (videoBitrateSpin_) videoBitrateSpin_->setEnabled(!checked);
+
+    // Update audio bitrate based on audio-only mode
+    if (checked && audioBitrateSpin_) {
+        // When audio-only mode is enabled, suggest quality preset bitrate
+        QString preset = getAudioQualityPreset();
+        if (preset == "low") {
+            audioBitrateSpin_->setValue(32);
+        } else if (preset == "medium") {
+            audioBitrateSpin_->setValue(48);
+        } else if (preset == "high") {
+            audioBitrateSpin_->setValue(64);
+        }
+    }
+}
+
+void SettingsDialog::onAudioQualityPresetChanged(int index) {
+    Q_UNUSED(index);
+
+    // Update audio bitrate based on selected preset
+    if (isAudioOnlyMode() && audioBitrateSpin_) {
+        QString preset = getAudioQualityPreset();
+        if (preset == "low") {
+            audioBitrateSpin_->setValue(32);
+        } else if (preset == "medium") {
+            audioBitrateSpin_->setValue(48);
+        } else if (preset == "high") {
+            audioBitrateSpin_->setValue(64);
+        }
+    }
 }
