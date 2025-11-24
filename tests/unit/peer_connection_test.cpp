@@ -225,8 +225,19 @@ TEST_F(PeerConnectionTest, MoveSemantics) {
 
 // Test: Multiple peer connections can coexist
 TEST_F(PeerConnectionTest, MultiplePeerConnectionsCoexist) {
+    // Create separate state for each connection to avoid shared callback issues
+    std::vector<std::pair<SdpType, std::string>> localDescriptions1;
+    std::vector<std::pair<SdpType, std::string>> localDescriptions2;
+
     auto config1 = createTestConfig();
+    config1.localDescriptionCallback = [&localDescriptions1](SdpType type, const std::string& sdp) {
+        localDescriptions1.push_back({type, sdp});
+    };
+
     auto config2 = createTestConfig();
+    config2.localDescriptionCallback = [&localDescriptions2](SdpType type, const std::string& sdp) {
+        localDescriptions2.push_back({type, sdp});
+    };
 
     auto pc1 = std::make_unique<PeerConnection>(config1);
     auto pc2 = std::make_unique<PeerConnection>(config2);
