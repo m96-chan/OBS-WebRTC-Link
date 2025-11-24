@@ -35,6 +35,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
       serverUrlLabel_(nullptr),
       tokenLabel_(nullptr),
       sessionIdLabel_(nullptr),
+      connectionStatusIndicator_(nullptr),
+      connectionStatsLabel_(nullptr),
+      connectionErrorLabel_(nullptr),
+      currentConnectionStatus_("Disconnected"),
       mainLayout_(nullptr),
       formLayout_(nullptr) {
     setupUi();
@@ -46,6 +50,28 @@ SettingsDialog::~SettingsDialog() = default;
 
 void SettingsDialog::setupUi() {
     mainLayout_ = new QVBoxLayout(this);
+
+    // Connection status indicator
+    connectionStatusIndicator_ = new QLabel(this);
+    connectionStatusIndicator_->setObjectName("connectionStatusIndicator");
+    connectionStatusIndicator_->setText(tr("Status: Disconnected"));
+    connectionStatusIndicator_->setStyleSheet("QLabel { color: red; font-weight: bold; padding: 5px; }");
+    mainLayout_->addWidget(connectionStatusIndicator_);
+
+    // Connection statistics label
+    connectionStatsLabel_ = new QLabel(this);
+    connectionStatsLabel_->setObjectName("connectionStatsLabel");
+    connectionStatsLabel_->setText(tr("Bitrate: 0 kbps | Packet Loss: 0.00%"));
+    connectionStatsLabel_->setStyleSheet("QLabel { padding: 5px; }");
+    mainLayout_->addWidget(connectionStatsLabel_);
+
+    // Connection error label (hidden by default)
+    connectionErrorLabel_ = new QLabel(this);
+    connectionErrorLabel_->setObjectName("connectionErrorLabel");
+    connectionErrorLabel_->setStyleSheet("QLabel { color: red; padding: 5px; }");
+    connectionErrorLabel_->setWordWrap(true);
+    connectionErrorLabel_->hide();
+    mainLayout_->addWidget(connectionErrorLabel_);
 
     // Create form layout
     formLayout_ = createFormLayout();
@@ -219,6 +245,10 @@ QString SettingsDialog::getSessionId() const {
     return sessionIdEdit_ ? sessionIdEdit_->text().trimmed() : QString();
 }
 
+QString SettingsDialog::getConnectionStatus() const {
+    return currentConnectionStatus_;
+}
+
 // Setters
 void SettingsDialog::setServerUrl(const QString& url) {
     if (serverUrlEdit_) {
@@ -274,6 +304,51 @@ void SettingsDialog::setToken(const QString& token) {
 void SettingsDialog::setSessionId(const QString& sessionId) {
     if (sessionIdEdit_) {
         sessionIdEdit_->setText(sessionId);
+    }
+}
+
+void SettingsDialog::setConnectionStatus(const QString& status) {
+    currentConnectionStatus_ = status;
+
+    if (!connectionStatusIndicator_) {
+        return;
+    }
+
+    // Update text and color based on status
+    connectionStatusIndicator_->setText(tr("Status: %1").arg(status));
+
+    if (status == "Disconnected") {
+        connectionStatusIndicator_->setStyleSheet(
+            "QLabel { color: red; font-weight: bold; padding: 5px; }");
+    } else if (status == "Connecting") {
+        connectionStatusIndicator_->setStyleSheet(
+            "QLabel { color: #FFA500; font-weight: bold; padding: 5px; }"); // Orange/yellow
+    } else if (status == "Connected") {
+        connectionStatusIndicator_->setStyleSheet(
+            "QLabel { color: green; font-weight: bold; padding: 5px; }");
+    }
+}
+
+void SettingsDialog::setConnectionError(const QString& error) {
+    if (connectionErrorLabel_) {
+        connectionErrorLabel_->setText(error);
+        connectionErrorLabel_->show();
+    }
+}
+
+void SettingsDialog::clearConnectionError() {
+    if (connectionErrorLabel_) {
+        connectionErrorLabel_->clear();
+        connectionErrorLabel_->hide();
+    }
+}
+
+void SettingsDialog::updateConnectionStats(int bitrateKbps, double packetLossPercent) {
+    if (connectionStatsLabel_) {
+        connectionStatsLabel_->setText(
+            tr("Bitrate: %1 kbps | Packet Loss: %2%")
+                .arg(bitrateKbps)
+                .arg(packetLossPercent, 0, 'f', 2));
     }
 }
 

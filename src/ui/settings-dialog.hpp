@@ -51,6 +51,7 @@ public:
     int getAudioBitrate() const;
     QString getToken() const;
     QString getSessionId() const;
+    QString getConnectionStatus() const;
 
     // Setters
     void setServerUrl(const QString& url);
@@ -61,6 +62,10 @@ public:
     void setAudioBitrate(int bitrate);
     void setToken(const QString& token);
     void setSessionId(const QString& sessionId);
+    void setConnectionStatus(const QString& status);
+    void setConnectionError(const QString& error);
+    void clearConnectionError();
+    void updateConnectionStats(int bitrateKbps, double packetLossPercent);
 
     /**
      * @brief Validate all settings
@@ -158,6 +163,12 @@ private:
     QLabel* serverUrlLabel_;
     QLabel* tokenLabel_;
     QLabel* sessionIdLabel_;
+
+    // Connection status display components
+    QLabel* connectionStatusIndicator_;
+    QLabel* connectionStatsLabel_;
+    QLabel* connectionErrorLabel_;
+    QString currentConnectionStatus_;
 
     // Layouts
     QVBoxLayout* mainLayout_;
