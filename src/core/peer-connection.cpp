@@ -4,10 +4,11 @@
  */
 
 #include "peer-connection.hpp"
+
 #include <mutex>
 #include <stdexcept>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace obswebrtc {
 namespace core {
@@ -18,12 +19,8 @@ namespace core {
 class PeerConnection::Impl {
 public:
     explicit Impl(const PeerConnectionConfig& config)
-        : config_(config)
-        , state_(ConnectionState::New)
-        , hasRemoteDescription_(false)
-        , remoteDescriptionSdp_("")
-        , pendingCandidates_()
-    {
+        : config_(config), state_(ConnectionState::New), hasRemoteDescription_(false),
+          remoteDescriptionSdp_(""), pendingCandidates_() {
         try {
             // Configure libdatachannel
             rtc::Configuration rtcConfig;
@@ -273,14 +270,12 @@ private:
         });
 
         // Set local description callback - must be set before any negotiation
-        peerConnection_->onLocalDescription([this](rtc::Description description) {
-            handleLocalDescription(description);
-        });
+        peerConnection_->onLocalDescription(
+            [this](rtc::Description description) { handleLocalDescription(description); });
 
         // Gather local candidates
-        peerConnection_->onLocalCandidate([this](rtc::Candidate candidate) {
-            handleLocalCandidate(candidate);
-        });
+        peerConnection_->onLocalCandidate(
+            [this](rtc::Candidate candidate) { handleLocalCandidate(candidate); });
 
         // Set up data channel handler - must be set before setRemoteDescription
         peerConnection_->onDataChannel([this](std::shared_ptr<rtc::DataChannel> dc) {
@@ -425,5 +420,5 @@ std::string PeerConnection::getRemoteDescription() const {
     return impl_->getRemoteDescription();
 }
 
-} // namespace core
-} // namespace obswebrtc
+}  // namespace core
+}  // namespace obswebrtc

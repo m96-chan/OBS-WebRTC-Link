@@ -3,12 +3,15 @@
  * @brief Unit tests for SignalingClient
  */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include "core/signaling-client.hpp"
+
 #include <nlohmann/json.hpp>
-#include <thread>
+
 #include <chrono>
+#include <thread>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace obswebrtc::core;
 using namespace testing;
@@ -29,22 +32,13 @@ protected:
     void SetUp() override {
         config_ = SignalingConfig{};
         config_.url = "wss://signaling.example.com";
-        config_.onConnected = [this]() {
-            connected_ = true;
-        };
-        config_.onDisconnected = [this]() {
-            connected_ = false;
-        };
-        config_.onError = [this](const std::string& error) {
-            lastError_ = error;
-        };
-        config_.onOffer = [this](const std::string& sdp) {
-            receivedOffer_ = sdp;
-        };
-        config_.onAnswer = [this](const std::string& sdp) {
-            receivedAnswer_ = sdp;
-        };
-        config_.onIceCandidate = [this](const std::string& candidate, const std::string& mid) {
+        config_.onConnected = [this]() { connected_ = true; };
+        config_.onDisconnected = [this]() { connected_ = false; };
+        config_.onError = [this](const std::string& error) { lastError_ = error; };
+        config_.onOffer = [this](const std::string& sdp) { receivedOffer_ = sdp; };
+        config_.onAnswer = [this](const std::string& sdp) { receivedAnswer_ = sdp; };
+        config_.onIceCandidate = [this](const std::string& candidate,
+                                        const std::string& mid) {
             receivedCandidates_.push_back({candidate, mid});
         };
     }
