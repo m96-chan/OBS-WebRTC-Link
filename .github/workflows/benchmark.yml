@@ -144,92 +144,71 @@ jobs:
         Get-ChildItem -Path .\build -Recurse -Filter "*.dll" | Select-Object FullName, Length
 
         Write-Host "`n=== Attempting to run benchmark with error capture ==="
-        $env:PATH = "$env:PATH;$PWD\build\Release;$PWD\build\deps\libdatachannel\Release"
+        # Add benchmark DLL directory to PATH
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
 
         try {
           $output = & .\build\tests\benchmarks\Release\whip_connection_benchmark.exe --help 2>&1
-          Write-Host "Success! Output: $output"
+          Write-Host "Benchmark executable loaded successfully"
+          Write-Host "Output: $output"
+          # Benchmark returns exit code 1 even with --help, but that's okay for diagnostic
+          $LASTEXITCODE = 0
         } catch {
           Write-Host "Error running benchmark: $_"
           Write-Host "Exception type: $($_.Exception.GetType().FullName)"
           Write-Host "Exception message: $($_.Exception.Message)"
+          exit 1
         }
 
     - name: Run WHIP connection benchmark
-      continue-on-error: true
-      id: whip_benchmark
       run: |
-        # Add build directories to PATH for DLL discovery
-        $env:PATH = "$env:PATH;$PWD\build\Release;$PWD\build\deps\libdatachannel\Release"
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
 
-        $ErrorActionPreference = "Continue"
-        try {
-          .\build\tests\benchmarks\Release\whip_connection_benchmark.exe `
-            --benchmark_min_time=0.1 `
-            --benchmark_format=json `
-            --benchmark_out=whip_benchmark.json
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Benchmark exited with code: $LASTEXITCODE"
-            Write-Host "This may indicate missing dependencies or runtime issues"
-            exit 0  # Don't fail the workflow for now
-          }
-        } catch {
-          Write-Host "Exception: $_"
-          Write-Host "Benchmark executable may have dependency issues"
-          exit 0  # Don't fail the workflow for now
-        }
+        .\build\tests\benchmarks\Release\whip_connection_benchmark.exe `
+          --benchmark_min_time=0.1 `
+          --benchmark_format=json `
+          --benchmark_out=whip_benchmark.json
 
     - name: Run WHEP connection benchmark
-      continue-on-error: true
       run: |
-        $ErrorActionPreference = "Continue"
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\whep_connection_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
           --benchmark_out=whep_benchmark.json
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Benchmark exited with code: $LASTEXITCODE (known issue)"
-          exit 0
-        }
 
     - name: Run P2P connection benchmark
-      continue-on-error: true
       run: |
-        $ErrorActionPreference = "Continue"
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\p2p_connection_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
           --benchmark_out=p2p_benchmark.json
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Benchmark exited with code: $LASTEXITCODE (known issue)"
-          exit 0
-        }
 
     - name: Run media throughput benchmark
-      continue-on-error: true
       run: |
-        $ErrorActionPreference = "Continue"
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\media_throughput_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
           --benchmark_out=media_benchmark.json
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Benchmark exited with code: $LASTEXITCODE (known issue)"
-          exit 0
-        }
 
     - name: Run scalability benchmark
-      continue-on-error: true
       run: |
-        $ErrorActionPreference = "Continue"
+        # Add benchmark DLL directory to PATH for DLL discovery
+        $env:PATH += ";$PWD\build\deps\benchmark\src\Release"
+
         .\build\tests\benchmarks\Release\scalability_benchmark.exe `
           --benchmark_min_time=0.1 `
           --benchmark_format=json `
           --benchmark_out=scalability_benchmark.json
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Benchmark exited with code: $LASTEXITCODE (known issue)"
-          exit 0
-        }
 
     - name: Upload benchmark results
       uses: actions/upload-artifact@v4
