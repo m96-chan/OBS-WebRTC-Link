@@ -9,6 +9,7 @@
 #include "core/p2p-connection.hpp"
 #include <vector>
 #include <memory>
+#include <chrono>
 
 using namespace obswebrtc::core;
 
