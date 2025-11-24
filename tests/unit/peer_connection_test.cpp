@@ -180,9 +180,10 @@ TEST_F(PeerConnectionTest, SetRemoteDescriptionSucceeds) {
     auto config2 = createTestConfig();
     auto answerer = std::make_unique<PeerConnection>(config2);
 
-    EXPECT_NO_THROW({
-        answerer->setRemoteDescription(SdpType::Offer, offerSdp);
-    });
+    EXPECT_NO_THROW({ answerer->setRemoteDescription(SdpType::Offer, offerSdp); });
+
+    // Wait for cleanup before destroying connections
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Add ICE candidate succeeds
