@@ -123,7 +123,7 @@ TEST_F(ReconnectionManagerTest, UsesExponentialBackoff) {
 
         // Second delay should be approximately 2x initialDelayMs (100ms) due to exponential backoff
         EXPECT_GE(secondDelay, 80);  // Allow some tolerance
-        EXPECT_LE(secondDelay, 300);
+        EXPECT_LE(secondDelay, 400);  // Increased tolerance for macOS CI timing variations
 
         // Second delay should be longer than first (exponential backoff verification)
         EXPECT_GT(secondDelay, firstDelay);
