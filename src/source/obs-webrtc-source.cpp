@@ -10,6 +10,11 @@
 #include <mutex>
 #include <queue>
 
+#ifdef ENABLE_QT_UI
+#include "ui/settings-dialog.hpp"
+#include <QWidget>
+#endif
+
 using namespace obswebrtc::source;
 
 /**
@@ -213,16 +218,85 @@ static void webrtc_source_get_defaults(obs_data_t *settings)
 {
     obs_data_set_default_string(settings, "server_url", "");
     obs_data_set_default_string(settings, "video_codec", "H264");
+    obs_data_set_default_string(settings, "connection_mode", "SFU");
+    obs_data_set_default_int(settings, "video_bitrate", 2500);
+    obs_data_set_default_string(settings, "audio_codec", "opus");
+    obs_data_set_default_int(settings, "audio_bitrate", 128);
+    obs_data_set_default_string(settings, "token", "");
 }
+
+#ifdef ENABLE_QT_UI
+/**
+ * @brief Handle settings dialog button click
+ */
+static bool webrtc_source_open_settings(obs_properties_t *props, obs_property_t *property, void *data)
+{
+    UNUSED_PARAMETER(props);
+    UNUSED_PARAMETER(property);
+
+    auto *source_data = static_cast<webrtc_source_data*>(data);
+    if (!source_data) {
+        return false;
+    }
+
+    // Get current settings
+    obs_data_t *settings = obs_source_get_settings(source_data->source);
+
+    // Create and show settings dialog
+    SettingsDialog dialog(nullptr);
+
+    // Load current settings into dialog
+    const char *server_url = obs_data_get_string(settings, "server_url");
+    const char *video_codec = obs_data_get_string(settings, "video_codec");
+    const char *connection_mode = obs_data_get_string(settings, "connection_mode");
+    int video_bitrate = obs_data_get_int(settings, "video_bitrate");
+    const char *audio_codec = obs_data_get_string(settings, "audio_codec");
+    int audio_bitrate = obs_data_get_int(settings, "audio_bitrate");
+    const char *token = obs_data_get_string(settings, "token");
+
+    dialog.setServerUrl(QString::fromUtf8(server_url));
+    dialog.setVideoCodec(QString::fromUtf8(video_codec).toLower());
+    dialog.setConnectionMode(QString::fromUtf8(connection_mode));
+    dialog.setVideoBitrate(video_bitrate);
+    dialog.setAudioCodec(QString::fromUtf8(audio_codec).toLower());
+    dialog.setAudioBitrate(audio_bitrate);
+    dialog.setToken(QString::fromUtf8(token));
+
+    // Show dialog and save settings if accepted
+    if (dialog.exec() == QDialog::Accepted) {
+        obs_data_set_string(settings, "server_url", dialog.getServerUrl().toUtf8().constData());
+        obs_data_set_string(settings, "video_codec", dialog.getVideoCodec().toUtf8().constData());
+        obs_data_set_string(settings, "connection_mode", dialog.getConnectionMode().toUtf8().constData());
+        obs_data_set_int(settings, "video_bitrate", dialog.getVideoBitrate());
+        obs_data_set_string(settings, "audio_codec", dialog.getAudioCodec().toUtf8().constData());
+        obs_data_set_int(settings, "audio_bitrate", dialog.getAudioBitrate());
+        obs_data_set_string(settings, "token", dialog.getToken().toUtf8().constData());
+
+        // Trigger source update
+        obs_source_update(source_data->source, settings);
+    }
+
+    obs_data_release(settings);
+    return true;
+}
+#endif
 
 /**
  * @brief Get source properties
  */
 static obs_properties_t *webrtc_source_get_properties(void *data)
 {
-    UNUSED_PARAMETER(data);
-
     obs_properties_t *props = obs_properties_create();
+
+#ifdef ENABLE_QT_UI
+    // Add button to open advanced settings dialog
+    obs_properties_add_button(props, "open_settings",
+                             obs_module_text("Advanced Settings..."),
+                             webrtc_source_open_settings);
+
+    // Add separator
+    obs_properties_add_text(props, "separator1", "---- Basic Settings ----", OBS_TEXT_INFO);
+#endif
 
     obs_properties_add_text(props, "server_url",
                            obs_module_text("Server URL"),
