@@ -112,7 +112,8 @@ jobs:
           git \
           ninja-build \
           pkg-config \
-          libssl-dev
+          libssl-dev \
+          software-properties-common
 
     - name: Install OBS Studio
       run: |
@@ -120,7 +121,7 @@ jobs:
         sudo add-apt-repository -y ppa:obsproject/obs-studio
         sudo apt-get update
         echo "Installing OBS Studio..."
-        sudo apt-get install -y obs-studio libobs-dev
+        sudo apt-get install -y libobs-dev
         echo "OBS Studio installed"
 
     - name: Verify OBS installation
