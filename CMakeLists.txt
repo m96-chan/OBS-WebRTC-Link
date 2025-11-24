@@ -132,6 +132,34 @@ if(BUILD_TESTING)
     endif()
 endif()
 
+# Google Benchmark (for performance benchmarks)
+option(BUILD_BENCHMARKS "Build performance benchmarks" ON)
+
+if(BUILD_BENCHMARKS)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/benchmark/CMakeLists.txt")
+        message(STATUS "Using Google Benchmark from submodule")
+
+        # Configure Google Benchmark options
+        set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+        set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+        set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
+        set(BENCHMARK_DOWNLOAD_DEPENDENCIES OFF CACHE BOOL "" FORCE)
+
+        add_subdirectory(deps/benchmark EXCLUDE_FROM_ALL)
+
+        set(benchmark_FOUND TRUE)
+    else()
+        message(WARNING "Google Benchmark submodule not found. Run: git submodule update --init --recursive")
+
+        # Try to find system-installed Google Benchmark
+        find_package(benchmark)
+        if(NOT benchmark_FOUND)
+            message(WARNING "Google Benchmark not found. Benchmarks will be disabled.")
+            set(BUILD_BENCHMARKS OFF)
+        endif()
+    endif()
+endif()
+
 # Core library (WebRTC logic, OBS-independent)
 set(CORE_SOURCES
     src/core/peer-connection.cpp

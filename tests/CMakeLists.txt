@@ -19,3 +19,8 @@ add_subdirectory(unit)
 
 # Integration tests (to be added later)
 # add_subdirectory(integration)
+
+# Benchmarks (Google Benchmark)
+if(BUILD_BENCHMARKS AND benchmark_FOUND)
+    add_subdirectory(benchmarks)
+endif()
