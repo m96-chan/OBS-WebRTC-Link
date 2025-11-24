@@ -88,14 +88,9 @@ public:
 
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
-            if (isRenegotiation) {
-                // For renegotiation, use Unspec type to let libdatachannel determine the type
-                // This ensures proper renegotiation behavior
-                pc->setLocalDescription(rtc::Description::Type::Unspec);
-            } else {
-                // For initial offer, explicitly specify Offer type
-                pc->setLocalDescription(rtc::Description::Type::Offer);
-            }
+            // Always use Type::Offer for both initial and renegotiation
+            // libdatachannel will handle the renegotiation internally
+            pc->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
         } catch (const std::exception& e) {

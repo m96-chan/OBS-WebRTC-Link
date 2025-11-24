@@ -608,14 +608,14 @@ TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
 
     // First offer
     pc1->createOffer();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ASSERT_FALSE(localDescriptions.empty());
     std::string offer1 = localDescriptions[0].second;
     localDescriptions.clear();
 
-    // Second offer
+    // Second offer (renegotiation)
     pc1->createOffer();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ASSERT_FALSE(localDescriptions.empty());
     std::string offer2 = localDescriptions[0].second;
 
