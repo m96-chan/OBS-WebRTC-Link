@@ -52,45 +52,32 @@ public:
     }
 
     void createOffer() {
-        std::shared_ptr<rtc::PeerConnection> pc;
-        bool isRenegotiation = false;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
 
-            if (!peerConnection_) {
-                return;  // NoOp if closed
-            }
-
-            pc = peerConnection_;
-            isRenegotiation = hasLocalDescription_;
+        if (!peerConnection_) {
+            return;  // NoOp if closed
         }
 
         try {
+            bool isRenegotiation = hasLocalDescription_;
+
             if (isRenegotiation) {
                 log(LogLevel::Info, "Creating offer (renegotiation)");
             } else {
                 log(LogLevel::Info, "Creating offer (initial)");
             }
 
-            // Create a data channel to trigger negotiation
+            // For initial offer, create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
-            // We must keep a reference to the data channel, otherwise it will be destroyed immediately
-            // Use a unique label for each offer to ensure renegotiation works
-            // Note: We release the mutex before creating the data channel to avoid potential deadlocks
-            // if libdatachannel calls our callbacks synchronously
-            static int offerCount = 0;
-            auto dc = pc->createDataChannel("negotiation-" + std::to_string(++offerCount));
-
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                dataChannels_.push_back(dc);  // Keep reference to all data channels
+            if (!isRenegotiation) {
+                auto dc = peerConnection_->createDataChannel("negotiation");
+                dataChannel_ = dc;  // Keep reference to prevent destruction
             }
 
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
             // Always use Type::Offer for both initial and renegotiation
-            // libdatachannel will handle the renegotiation internally
-            pc->setLocalDescription(rtc::Description::Type::Offer);
+            peerConnection_->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
         } catch (const std::exception& e) {
@@ -210,15 +197,7 @@ public:
             log(LogLevel::Info, "Closing PeerConnection");
 
             try {
-                // Close and clear all data channels first
-                for (auto& dc : dataChannels_) {
-                    if (dc) {
-                        dc->close();
-                    }
-                }
-                dataChannels_.clear();
-
-                // Also close legacy data channel if it exists
+                // Close and clear data channel first
                 if (dataChannel_) {
                     dataChannel_->close();
                     dataChannel_.reset();
@@ -388,8 +367,7 @@ private:
 
     PeerConnectionConfig config_;
     std::shared_ptr<rtc::PeerConnection> peerConnection_;
-    std::shared_ptr<rtc::DataChannel> dataChannel_;  // Keep reference to data channel (legacy)
-    std::vector<std::shared_ptr<rtc::DataChannel>> dataChannels_;  // Keep references to all data channels
+    std::shared_ptr<rtc::DataChannel> dataChannel_;  // Keep reference to data channel
     ConnectionState state_;
     bool hasRemoteDescription_;
     bool hasLocalDescription_;  // Track if we've generated a local description (for renegotiation)
