@@ -13,6 +13,9 @@
 #include <QDialogButtonBox>
 #include <QMessageBox>
 #include <QUrl>
+#include <QUuid>
+#include <QClipboard>
+#include <QGuiApplication>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent),
@@ -27,6 +30,8 @@ SettingsDialog::SettingsDialog(QWidget* parent)
       okButton_(nullptr),
       cancelButton_(nullptr),
       errorLabel_(nullptr),
+      generateSessionIdButton_(nullptr),
+      copySessionIdButton_(nullptr),
       serverUrlLabel_(nullptr),
       tokenLabel_(nullptr),
       sessionIdLabel_(nullptr),
@@ -62,6 +67,15 @@ void SettingsDialog::setupUi() {
     // Connect signals
     connect(connectionModeCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SettingsDialog::onConnectionModeChanged);
+    connect(generateSessionIdButton_, &QPushButton::clicked,
+            this, &SettingsDialog::onGenerateSessionId);
+    connect(copySessionIdButton_, &QPushButton::clicked,
+            this, &SettingsDialog::onCopySessionId);
+    connect(sessionIdEdit_, &QLineEdit::textChanged,
+            this, &SettingsDialog::updateCopyButtonState);
+
+    // Initialize copy button state
+    updateCopyButtonState();
 }
 
 QFormLayout* SettingsDialog::createFormLayout() {
@@ -94,11 +108,29 @@ QFormLayout* SettingsDialog::createFormLayout() {
     sessionIdEdit_ = new QLineEdit(this);
     sessionIdEdit_->setObjectName("sessionIdEdit");
     sessionIdEdit_->setPlaceholderText(tr("Enter or generate session ID"));
-    layout->addRow(sessionIdLabel_, sessionIdEdit_);
+
+    // Create horizontal layout for session ID with buttons
+    QHBoxLayout* sessionIdLayout = new QHBoxLayout();
+    sessionIdLayout->addWidget(sessionIdEdit_);
+
+    // Generate button
+    generateSessionIdButton_ = new QPushButton(tr("Generate"), this);
+    generateSessionIdButton_->setObjectName("generateSessionIdButton");
+    sessionIdLayout->addWidget(generateSessionIdButton_);
+
+    // Copy button
+    copySessionIdButton_ = new QPushButton(tr("Copy"), this);
+    copySessionIdButton_->setObjectName("copySessionIdButton");
+    sessionIdLayout->addWidget(copySessionIdButton_);
+
+    layout->addRow(sessionIdLabel_, sessionIdLayout);
+
     // Initially hide session ID (default mode is SFU)
     sessionIdLabel_->setVisible(false);
     sessionIdEdit_->setVisible(false);
     sessionIdEdit_->setEnabled(false);
+    generateSessionIdButton_->setVisible(false);
+    copySessionIdButton_->setVisible(false);
 
     // Video codec
     videoCodecCombo_ = new QComboBox(this);
@@ -354,6 +386,10 @@ void SettingsDialog::onConnectionModeChanged(int index) {
             sessionIdEdit_->setVisible(false);
             sessionIdEdit_->setEnabled(false);
         }
+
+        // Hide session ID buttons in SFU mode
+        if (generateSessionIdButton_) generateSessionIdButton_->setVisible(false);
+        if (copySessionIdButton_) copySessionIdButton_->setVisible(false);
     } else if (mode == "P2P") {
         // P2P mode: Hide server URL and token, show session ID
         if (serverUrlLabel_) serverUrlLabel_->setVisible(false);
@@ -373,5 +409,56 @@ void SettingsDialog::onConnectionModeChanged(int index) {
             sessionIdEdit_->setVisible(true);
             sessionIdEdit_->setEnabled(true);
         }
+
+        // Show session ID buttons in P2P mode
+        if (generateSessionIdButton_) {
+            generateSessionIdButton_->setVisible(true);
+            generateSessionIdButton_->setEnabled(true);
+        }
+        if (copySessionIdButton_) {
+            copySessionIdButton_->setVisible(true);
+        }
+
+        // Auto-generate session ID if empty
+        if (sessionIdEdit_ && sessionIdEdit_->text().isEmpty()) {
+            setSessionId(generateSessionId());
+        }
+
+        // Update copy button state
+        updateCopyButtonState();
     }
+}
+
+QString SettingsDialog::generateSessionId() {
+    // Generate a UUID and take the first 8 characters for a shorter code
+    QString uuid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    // Remove hyphens and take first 12 characters for readability
+    QString sessionId = uuid.remove('-').left(12).toUpper();
+    return sessionId;
+}
+
+void SettingsDialog::onGenerateSessionId() {
+    QString newSessionId = generateSessionId();
+    setSessionId(newSessionId);
+}
+
+void SettingsDialog::onCopySessionId() {
+    if (!sessionIdEdit_) {
+        return;
+    }
+
+    QString sessionId = getSessionId();
+    if (!sessionId.isEmpty()) {
+        QClipboard* clipboard = QGuiApplication::clipboard();
+        clipboard->setText(sessionId);
+    }
+}
+
+void SettingsDialog::updateCopyButtonState() {
+    if (!copySessionIdButton_ || !sessionIdEdit_) {
+        return;
+    }
+
+    bool hasSessionId = !sessionIdEdit_->text().isEmpty();
+    copySessionIdButton_->setEnabled(hasSessionId);
 }

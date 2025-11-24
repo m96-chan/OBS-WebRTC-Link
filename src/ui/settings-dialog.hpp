@@ -68,6 +68,12 @@ public:
      */
     bool validateSettings() const;
 
+    /**
+     * @brief Generate a new session ID
+     * @return Newly generated session ID string
+     */
+    QString generateSessionId();
+
 private slots:
     /**
      * @brief Handle OK button click
@@ -84,6 +90,21 @@ private slots:
      * @param index Current index of connection mode combo box
      */
     void onConnectionModeChanged(int index);
+
+    /**
+     * @brief Handle generate session ID button click
+     */
+    void onGenerateSessionId();
+
+    /**
+     * @brief Handle copy session ID button click
+     */
+    void onCopySessionId();
+
+    /**
+     * @brief Update copy button enabled state based on session ID
+     */
+    void updateCopyButtonState();
 
 private:
     /**
@@ -128,6 +149,10 @@ private:
     QPushButton* okButton_;
     QPushButton* cancelButton_;
     QLabel* errorLabel_;
+
+    // Session ID management buttons
+    QPushButton* generateSessionIdButton_;
+    QPushButton* copySessionIdButton_;
 
     // Labels for dynamic show/hide
     QLabel* serverUrlLabel_;

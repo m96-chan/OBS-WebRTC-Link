@@ -8,6 +8,9 @@
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QPushButton>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QRegularExpression>
 #include "ui/settings-dialog.hpp"
 
 namespace {
@@ -433,6 +436,175 @@ TEST_F(SettingsDialogTest, P2pModeDoesNotRequireServerUrl) {
 
     // In P2P mode, server URL is optional
     EXPECT_TRUE(dialog.validateSettings()) << "Validation should pass without server URL in P2P mode";
+}
+
+// Issue #16 Tests: Session ID Display/Input UI Implementation
+
+// Test 32: Can generate session ID
+TEST_F(SettingsDialogTest, CanGenerateSessionId) {
+    SettingsDialog dialog(nullptr);
+
+    QString generatedId = dialog.generateSessionId();
+
+    EXPECT_FALSE(generatedId.isEmpty()) << "Generated session ID should not be empty";
+    EXPECT_GE(generatedId.length(), 8) << "Session ID should be at least 8 characters";
+}
+
+// Test 33: Generated session IDs are unique
+TEST_F(SettingsDialogTest, GeneratedSessionIdsAreUnique) {
+    SettingsDialog dialog(nullptr);
+
+    QString id1 = dialog.generateSessionId();
+    QString id2 = dialog.generateSessionId();
+    QString id3 = dialog.generateSessionId();
+
+    EXPECT_NE(id1, id2) << "First and second session IDs should be different";
+    EXPECT_NE(id2, id3) << "Second and third session IDs should be different";
+    EXPECT_NE(id1, id3) << "First and third session IDs should be different";
+}
+
+// Test 34: Session ID contains only valid characters
+TEST_F(SettingsDialogTest, SessionIdContainsValidCharacters) {
+    SettingsDialog dialog(nullptr);
+
+    QString sessionId = dialog.generateSessionId();
+
+    // Should only contain alphanumeric characters and hyphens
+    QRegularExpression validPattern("^[A-Za-z0-9-]+$");
+    EXPECT_TRUE(validPattern.match(sessionId).hasMatch())
+        << "Session ID should only contain alphanumeric characters and hyphens";
+}
+
+// Test 35: Has generate session ID button
+TEST_F(SettingsDialogTest, HasGenerateSessionIdButton) {
+    SettingsDialog dialog(nullptr);
+
+    QPushButton* generateButton = dialog.findChild<QPushButton*>("generateSessionIdButton");
+    ASSERT_NE(generateButton, nullptr) << "Generate session ID button should exist";
+    EXPECT_FALSE(generateButton->text().isEmpty()) << "Button should have text";
+}
+
+// Test 36: Has copy session ID button
+TEST_F(SettingsDialogTest, HasCopySessionIdButton) {
+    SettingsDialog dialog(nullptr);
+
+    QPushButton* copyButton = dialog.findChild<QPushButton*>("copySessionIdButton");
+    ASSERT_NE(copyButton, nullptr) << "Copy session ID button should exist";
+    EXPECT_FALSE(copyButton->text().isEmpty()) << "Button should have text";
+}
+
+// Test 37: Generate button creates new session ID
+TEST_F(SettingsDialogTest, GenerateButtonCreatesNewSessionId) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+
+    // Set initial session ID
+    dialog.setSessionId("initial-session-id");
+    QString initialId = dialog.getSessionId();
+
+    // Click generate button
+    QPushButton* generateButton = dialog.findChild<QPushButton*>("generateSessionIdButton");
+    ASSERT_NE(generateButton, nullptr);
+
+    // Simulate button click
+    generateButton->click();
+
+    QString newId = dialog.getSessionId();
+    EXPECT_NE(initialId, newId) << "Session ID should change after clicking generate button";
+    EXPECT_FALSE(newId.isEmpty()) << "New session ID should not be empty";
+}
+
+// Test 38: Copy button copies session ID to clipboard
+TEST_F(SettingsDialogTest, CopyButtonCopiesSessionIdToClipboard) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+
+    QString testSessionId = "test-session-12345";
+    dialog.setSessionId(testSessionId);
+
+    QPushButton* copyButton = dialog.findChild<QPushButton*>("copySessionIdButton");
+    ASSERT_NE(copyButton, nullptr);
+
+    // Click copy button
+    copyButton->click();
+
+    // Check clipboard content
+    QClipboard* clipboard = QGuiApplication::clipboard();
+    EXPECT_EQ(clipboard->text(), testSessionId) << "Clipboard should contain the session ID";
+}
+
+// Test 39: Generate and copy buttons visible in P2P mode
+TEST_F(SettingsDialogTest, GenerateAndCopyButtonsVisibleInP2pMode) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+
+    QPushButton* generateButton = dialog.findChild<QPushButton*>("generateSessionIdButton");
+    QPushButton* copyButton = dialog.findChild<QPushButton*>("copySessionIdButton");
+
+    ASSERT_NE(generateButton, nullptr);
+    ASSERT_NE(copyButton, nullptr);
+
+    EXPECT_TRUE(generateButton->isVisible()) << "Generate button should be visible in P2P mode";
+    EXPECT_TRUE(generateButton->isEnabled()) << "Generate button should be enabled in P2P mode";
+    EXPECT_TRUE(copyButton->isVisible()) << "Copy button should be visible in P2P mode";
+    EXPECT_TRUE(copyButton->isEnabled()) << "Copy button should be enabled in P2P mode";
+}
+
+// Test 40: Generate and copy buttons hidden in SFU mode
+TEST_F(SettingsDialogTest, GenerateAndCopyButtonsHiddenInSfuMode) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("SFU");
+
+    QPushButton* generateButton = dialog.findChild<QPushButton*>("generateSessionIdButton");
+    QPushButton* copyButton = dialog.findChild<QPushButton*>("copySessionIdButton");
+
+    if (generateButton) {
+        EXPECT_FALSE(generateButton->isVisible()) << "Generate button should be hidden in SFU mode";
+    }
+    if (copyButton) {
+        EXPECT_FALSE(copyButton->isVisible()) << "Copy button should be hidden in SFU mode";
+    }
+}
+
+// Test 41: Session ID auto-generated when switching to P2P mode
+TEST_F(SettingsDialogTest, SessionIdAutoGeneratedWhenSwitchingToP2pMode) {
+    SettingsDialog dialog(nullptr);
+
+    // Start in SFU mode
+    dialog.setConnectionMode("SFU");
+    EXPECT_TRUE(dialog.getSessionId().isEmpty() || !dialog.getSessionId().isEmpty());
+
+    // Switch to P2P mode
+    dialog.setConnectionMode("P2P");
+
+    // Session ID should be auto-generated
+    QString sessionId = dialog.getSessionId();
+    EXPECT_FALSE(sessionId.isEmpty()) << "Session ID should be auto-generated when switching to P2P mode";
+    EXPECT_GE(sessionId.length(), 8) << "Auto-generated session ID should be at least 8 characters";
+}
+
+// Test 42: Copy button disabled when session ID is empty
+TEST_F(SettingsDialogTest, CopyButtonDisabledWhenSessionIdEmpty) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+    dialog.setSessionId("");
+
+    QPushButton* copyButton = dialog.findChild<QPushButton*>("copySessionIdButton");
+    ASSERT_NE(copyButton, nullptr);
+
+    EXPECT_FALSE(copyButton->isEnabled()) << "Copy button should be disabled when session ID is empty";
+}
+
+// Test 43: Copy button enabled when session ID is not empty
+TEST_F(SettingsDialogTest, CopyButtonEnabledWhenSessionIdNotEmpty) {
+    SettingsDialog dialog(nullptr);
+    dialog.setConnectionMode("P2P");
+    dialog.setSessionId("valid-session-id");
+
+    QPushButton* copyButton = dialog.findChild<QPushButton*>("copySessionIdButton");
+    ASSERT_NE(copyButton, nullptr);
+
+    EXPECT_TRUE(copyButton->isEnabled()) << "Copy button should be enabled when session ID is not empty";
 }
 
 } // namespace
