@@ -95,7 +95,7 @@ jobs:
 
   build-linux-plugin:
     name: Build Plugin (Linux)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
@@ -238,89 +238,6 @@ jobs:
           build/CMakeFiles/CMakeError.log
         if-no-files-found: ignore
 
-  build-windows-plugin:
-    name: Build Plugin (Windows)
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Setup MSVC
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Install OBS Studio
-      run: |
-        echo "Installing OBS Studio via Chocolatey..."
-        choco install obs-studio -y
-        echo "OBS Studio installed"
-
-    - name: Verify OBS installation
-      run: |
-        echo "Checking OBS installation..."
-        $obsPath = "C:\Program Files\obs-studio"
-        if (Test-Path $obsPath) {
-          echo "✓ OBS Studio found at: $obsPath"
-          Get-ChildItem $obsPath -Recurse -Filter "obs-module.h" | Select-Object -First 5 | ForEach-Object { echo $_.FullName }
-        } else {
-          echo "✗ OBS Studio not found at expected path"
-          exit 1
-        }
-
-    - name: Configure CMake (Full Plugin Build)
-      run: |
-        cmake -B build `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DBUILD_LIBDATACHANNEL=ON `
-          -DBUILD_TESTING=OFF
-
-    - name: Build plugin
-      run: |
-        cmake --build build --config Release
-
-    - name: Package plugin
-      run: |
-        $version = (Get-Content VERSION).Trim()
-        $packageDir = "obs-webrtc-link-$version-windows-x64"
-
-        New-Item -ItemType Directory -Force -Path $packageDir\obs-plugins\64bit
-        New-Item -ItemType Directory -Force -Path $packageDir\data\obs-plugins\obs-webrtc-link
-
-        Copy-Item build\Release\obs-webrtc-link.dll $packageDir\obs-plugins\64bit\
-        Copy-Item README.md $packageDir\
-        Copy-Item LICENSE $packageDir\
-        Copy-Item CHANGELOG.md $packageDir\
-
-        Compress-Archive -Path $packageDir\* -DestinationPath "$packageDir.zip"
-
-        echo "Package created: $packageDir.zip"
-
-    - name: Upload plugin artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-plugin
-        path: obs-webrtc-link-*-windows-x64.zip
-        retention-days: 7
-
-    - name: Install NSIS
-      run: |
-        choco install nsis -y
-
-    - name: Build Windows Installer
-      shell: pwsh
-      run: |
-        cd installer/windows
-        .\build-installer.ps1
-
-    - name: Upload Windows Installer
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-installer
-        path: build/installer/obs-webrtc-link-*-installer.exe
-        retention-days: 7
-
   build-macos:
     name: Build (macOS)
     runs-on: macos-latest
@@ -391,74 +308,6 @@ jobs:
           build/CMakeFiles/CMakeOutput.log
           build/CMakeFiles/CMakeError.log
         if-no-files-found: ignore
-
-  build-macos-plugin:
-    name: Build Plugin (macOS)
-    runs-on: macos-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Install dependencies
-      run: |
-        brew install cmake ninja pkg-config openssl
-
-    - name: Install OBS Studio
-      run: |
-        echo "Installing OBS Studio via Homebrew..."
-        brew install --cask obs
-        echo "OBS Studio installed"
-
-    - name: Verify OBS installation
-      run: |
-        echo "Checking OBS installation..."
-        OBS_APP="/Applications/OBS.app"
-        if [ -d "$OBS_APP" ]; then
-          echo "✓ OBS.app found at: $OBS_APP"
-          find "$OBS_APP" -name "obs-module.h" | head -5
-        else
-          echo "✗ OBS.app not found"
-          exit 1
-        fi
-
-    - name: Configure CMake (Full Plugin Build)
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_LIBDATACHANNEL=ON \
-          -DBUILD_TESTING=OFF
-
-    - name: Build plugin
-      run: |
-        cd build
-        ninja obs-webrtc-link
-
-    - name: Package plugin
-      run: |
-        VERSION=$(cat VERSION | tr -d '[:space:]')
-        PACKAGE_DIR="obs-webrtc-link-${VERSION}-macos-universal"
-
-        mkdir -p ${PACKAGE_DIR}/obs-plugins
-        mkdir -p ${PACKAGE_DIR}/data/obs-plugins/obs-webrtc-link
-
-        cp build/obs-webrtc-link.so ${PACKAGE_DIR}/obs-plugins/
-        cp README.md ${PACKAGE_DIR}/
-        cp LICENSE ${PACKAGE_DIR}/
-        cp CHANGELOG.md ${PACKAGE_DIR}/
-
-        tar czf ${PACKAGE_DIR}.tar.gz ${PACKAGE_DIR}
-
-        echo "Package created: ${PACKAGE_DIR}.tar.gz"
-
-    - name: Upload plugin artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-plugin
-        path: obs-webrtc-link-*-macos-universal.tar.gz
-        retention-days: 7
 
   # ============================================================================
   # Test Jobs - Execute tests using built binaries
