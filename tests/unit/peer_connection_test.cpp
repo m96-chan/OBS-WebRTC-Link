@@ -235,6 +235,13 @@ TEST_F(PeerConnectionTest, MultiplePeerConnectionsCoexist) {
 
     EXPECT_FALSE(pc1->getLocalDescription().empty());
     EXPECT_FALSE(pc2->getLocalDescription().empty());
+
+    // Explicitly close connections before destruction to avoid double-free
+    pc1->close();
+    pc2->close();
+
+    // Allow time for cleanup
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Logging callback is invoked
