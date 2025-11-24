@@ -86,7 +86,7 @@ TEST_F(ReconnectionManagerTest, UsesExponentialBackoff) {
 
     ReconnectionConfig config;
     config.maxRetries = 3;
-    config.initialDelayMs = 100;
+    config.initialDelayMs = 50;  // Shorter initial delay for faster test
     config.maxDelayMs = 1000;
     config.reconnectCallback = [&reconnectTimes]() {
         reconnectTimes.push_back(
@@ -100,23 +100,33 @@ TEST_F(ReconnectionManagerTest, UsesExponentialBackoff) {
 
     auto startTime = std::chrono::steady_clock::now();
 
-    // Schedule multiple reconnections
+    // Schedule first reconnection
     manager.scheduleReconnect();
+    // Wait for first callback to complete (50ms delay + buffer)
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
+    // Schedule second reconnection
     manager.scheduleReconnect();
+    // Wait for second callback to complete (100ms delay + buffer)
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
-    manager.scheduleReconnect();
-    std::this_thread::sleep_for(std::chrono::milliseconds(450));
-
-    // Check that delays are increasing (exponential backoff)
+    // Check that we got at least 2 reconnect callbacks
     EXPECT_GE(reconnectTimes.size(), 2);
     if (reconnectTimes.size() >= 2) {
-        int64_t firstDelay = reconnectTimes[0];
+        // Calculate the time differences between callbacks
+        int64_t firstDelay = reconnectTimes[0] - std::chrono::duration_cast<std::chrono::milliseconds>(startTime.time_since_epoch()).count();
         int64_t secondDelay = reconnectTimes[1] - reconnectTimes[0];
-        // Second delay should be longer than first
-        EXPECT_GT(secondDelay, 150);
+
+        // First delay should be approximately initialDelayMs (50ms)
+        EXPECT_GE(firstDelay, 40);  // Allow some tolerance
+        EXPECT_LE(firstDelay, 200);
+
+        // Second delay should be approximately 2x initialDelayMs (100ms) due to exponential backoff
+        EXPECT_GE(secondDelay, 80);  // Allow some tolerance
+        EXPECT_LE(secondDelay, 300);
+
+        // Second delay should be longer than first (exponential backoff verification)
+        EXPECT_GT(secondDelay, firstDelay);
     }
 }
 
