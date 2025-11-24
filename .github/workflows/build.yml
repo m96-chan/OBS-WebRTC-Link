@@ -9,124 +9,12 @@ on:
 
 jobs:
   # ============================================================================
-  # Build OBS SDK Jobs - Build OBS Studio SDK for plugin compilation
-  # ============================================================================
-
-  build-obs-linux:
-    name: Build OBS SDK (Linux)
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Cache OBS Studio SDK
-      id: cache-obs
-      uses: actions/cache@v4
-      with:
-        path: obs-studio/build/install
-        key: obs-sdk-linux-30.2.0
-
-    - name: Install OBS dependencies
-      if: steps.cache-obs.outputs.cache-hit != 'true'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          cmake \
-          git \
-          ninja-build \
-          pkg-config \
-          qtbase5-dev \
-          libqt5svg5-dev \
-          libavcodec-dev \
-          libavdevice-dev \
-          libavfilter-dev \
-          libavformat-dev \
-          libavutil-dev \
-          libswresample-dev \
-          libswscale-dev \
-          libx264-dev \
-          libcurl4-openssl-dev \
-          libmbedtls-dev \
-          libgl1-mesa-dev \
-          libjansson-dev \
-          libluajit-5.1-dev \
-          python3-dev \
-          libx11-dev \
-          libxcb-xinput-dev \
-          libxcb-randr0-dev \
-          libxcb-xfixes0-dev \
-          libx11-xcb-dev \
-          libxcb1-dev \
-          libxcb-keysyms1-dev \
-          libxcb-shm0-dev \
-          libxcb-xinerama0-dev \
-          libasound2-dev \
-          libpulse-dev \
-          libwayland-dev \
-          libdrm-dev \
-          uthash-dev \
-          libxkbcommon-dev \
-          libxcb-composite0-dev \
-          libv4l-dev
-
-    - name: Build OBS Studio SDK
-      if: steps.cache-obs.outputs.cache-hit != 'true'
-      run: |
-        git clone --recursive https://github.com/obsproject/obs-studio.git
-        cd obs-studio
-        git checkout 30.2.0
-
-        # Create CMake preset for minimal SDK build
-        cat > CMakeUserPresets.json << 'PRESET_EOF'
-        {
-          "version": 3,
-          "configurePresets": [
-            {
-              "name": "ci-linux-minimal",
-              "displayName": "Linux Minimal SDK",
-              "binaryDir": "${sourceDir}/build",
-              "generator": "Ninja",
-              "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install",
-                "ENABLE_BROWSER": false,
-                "ENABLE_WEBSOCKET": false,
-                "ENABLE_SCRIPTING": false,
-                "ENABLE_UI": false,
-                "BUILD_TESTS": false,
-                "ENABLE_PLUGINS": false,
-                "ENABLE_AJA": false,
-                "ENABLE_ALSA": false,
-                "ENABLE_JACK": false,
-                "ENABLE_PIPEWIRE": false,
-                "ENABLE_PULSEAUDIO": false,
-                "ENABLE_V4L2": false,
-                "ENABLE_VLC": false,
-                "ENABLE_WAYLAND": false
-              }
-            }
-          ]
-        }
-        PRESET_EOF
-
-        cmake --preset ci-linux-minimal
-        cmake --build build --target obs-frontend-api
-        cmake --build build --target install
-
-    - name: Upload OBS SDK
-      uses: actions/upload-artifact@v4
-      with:
-        name: obs-sdk-linux
-        path: obs-studio/build/install
-        retention-days: 1
-
-  # ============================================================================
   # Build Jobs - Build plugin and test binaries
   # ============================================================================
 
   build-linux:
-    name: Build (Linux)
-    runs-on: ubuntu-22.04
-    needs: build-obs-linux
+    name: Build (Linux Tests)
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout code
@@ -149,12 +37,6 @@ jobs:
           libqt6gui6 \
           libqt6widgets6
 
-    - name: Download OBS SDK
-      uses: actions/download-artifact@v4
-      with:
-        name: obs-sdk-linux
-        path: obs-sdk
-
     - name: Check submodules
       run: |
         echo "=== Checking Git Submodules ==="
@@ -169,42 +51,28 @@ jobs:
         echo "=== googletest exists: ==="
         test -d deps/googletest && echo "✓ Found" || echo "✗ Not found"
 
-    - name: Configure CMake
+    - name: Configure CMake (Tests Only)
       run: |
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
           -DBUILD_LIBDATACHANNEL=ON \
           -DBUILD_TESTING=ON \
-          -DOBS_INCLUDE_SEARCH_PATH=$PWD/obs-sdk/include \
-          -DOBS_LIB_SEARCH_PATH=$PWD/obs-sdk/lib
+          -DBUILD_TESTS_ONLY=ON
 
     - name: Build dependencies
       run: |
         cd build
         ninja datachannel-static
-        # nlohmann_json is header-only, no build target needed
 
     - name: Build test framework
       run: |
         cd build
         ninja gtest gtest_main gmock || ninja gtest || echo "gtest built"
 
-    - name: Build plugin
-      run: |
-        cd build
-        ninja obs-webrtc-link
-
     - name: Build all tests
       run: |
         cd build
         ninja all
-
-    - name: Upload plugin binary
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-plugin
-        path: build/obs-webrtc-link.so
-        retention-days: 7
 
     - name: Upload test binaries
       uses: actions/upload-artifact@v4
@@ -224,6 +92,83 @@ jobs:
           build/CMakeFiles/CMakeOutput.log
           build/CMakeFiles/CMakeError.log
         if-no-files-found: ignore
+
+  build-linux-plugin:
+    name: Build Plugin (Linux)
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          git \
+          ninja-build \
+          pkg-config \
+          libssl-dev
+
+    - name: Install OBS Studio
+      run: |
+        echo "Adding OBS Studio PPA..."
+        sudo add-apt-repository -y ppa:obsproject/obs-studio
+        sudo apt-get update
+        echo "Installing OBS Studio..."
+        sudo apt-get install -y obs-studio libobs-dev
+        echo "OBS Studio installed"
+
+    - name: Verify OBS installation
+      run: |
+        echo "Checking OBS installation..."
+        if [ -f "/usr/include/obs/obs-module.h" ]; then
+          echo "✓ OBS headers found at /usr/include/obs/"
+          ls -la /usr/include/obs/ | head -10
+        else
+          echo "✗ OBS headers not found"
+          exit 1
+        fi
+
+    - name: Configure CMake (Full Plugin Build)
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=OFF
+
+    - name: Build plugin
+      run: |
+        cd build
+        ninja obs-webrtc-link
+
+    - name: Package plugin
+      run: |
+        VERSION=$(cat VERSION | tr -d '[:space:]')
+        PACKAGE_DIR="obs-webrtc-link-${VERSION}-linux-x86_64"
+
+        mkdir -p ${PACKAGE_DIR}/lib/obs-plugins
+        mkdir -p ${PACKAGE_DIR}/share/obs/obs-plugins/obs-webrtc-link
+
+        cp build/obs-webrtc-link.so ${PACKAGE_DIR}/lib/obs-plugins/
+        cp README.md ${PACKAGE_DIR}/
+        cp LICENSE ${PACKAGE_DIR}/
+        cp CHANGELOG.md ${PACKAGE_DIR}/
+
+        tar czf ${PACKAGE_DIR}.tar.gz ${PACKAGE_DIR}
+
+        echo "Package created: ${PACKAGE_DIR}.tar.gz"
+
+    - name: Upload plugin artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-plugin
+        path: obs-webrtc-link-*-linux-x86_64.tar.gz
+        retention-days: 7
 
   build-windows:
     name: Build (Windows)
@@ -292,6 +237,72 @@ jobs:
           build/CMakeFiles/CMakeOutput.log
           build/CMakeFiles/CMakeError.log
         if-no-files-found: ignore
+
+  build-windows-plugin:
+    name: Build Plugin (Windows)
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Install OBS Studio
+      run: |
+        echo "Installing OBS Studio via Chocolatey..."
+        choco install obs-studio -y
+        echo "OBS Studio installed"
+
+    - name: Verify OBS installation
+      run: |
+        echo "Checking OBS installation..."
+        $obsPath = "C:\Program Files\obs-studio"
+        if (Test-Path $obsPath) {
+          echo "✓ OBS Studio found at: $obsPath"
+          Get-ChildItem $obsPath -Recurse -Filter "obs-module.h" | Select-Object -First 5 | ForEach-Object { echo $_.FullName }
+        } else {
+          echo "✗ OBS Studio not found at expected path"
+          exit 1
+        }
+
+    - name: Configure CMake (Full Plugin Build)
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DBUILD_LIBDATACHANNEL=ON `
+          -DBUILD_TESTING=OFF
+
+    - name: Build plugin
+      run: |
+        cmake --build build --config Release
+
+    - name: Package plugin
+      run: |
+        $version = (Get-Content VERSION).Trim()
+        $packageDir = "obs-webrtc-link-$version-windows-x64"
+
+        New-Item -ItemType Directory -Force -Path $packageDir\obs-plugins\64bit
+        New-Item -ItemType Directory -Force -Path $packageDir\data\obs-plugins\obs-webrtc-link
+
+        Copy-Item build\Release\obs-webrtc-link.dll $packageDir\obs-plugins\64bit\
+        Copy-Item README.md $packageDir\
+        Copy-Item LICENSE $packageDir\
+        Copy-Item CHANGELOG.md $packageDir\
+
+        Compress-Archive -Path $packageDir\* -DestinationPath "$packageDir.zip"
+
+        echo "Package created: $packageDir.zip"
+
+    - name: Upload plugin artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-plugin
+        path: obs-webrtc-link-*-windows-x64.zip
+        retention-days: 7
 
   build-macos:
     name: Build (macOS)
@@ -363,6 +374,74 @@ jobs:
           build/CMakeFiles/CMakeOutput.log
           build/CMakeFiles/CMakeError.log
         if-no-files-found: ignore
+
+  build-macos-plugin:
+    name: Build Plugin (macOS)
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ninja pkg-config openssl
+
+    - name: Install OBS Studio
+      run: |
+        echo "Installing OBS Studio via Homebrew..."
+        brew install --cask obs
+        echo "OBS Studio installed"
+
+    - name: Verify OBS installation
+      run: |
+        echo "Checking OBS installation..."
+        OBS_APP="/Applications/OBS.app"
+        if [ -d "$OBS_APP" ]; then
+          echo "✓ OBS.app found at: $OBS_APP"
+          find "$OBS_APP" -name "obs-module.h" | head -5
+        else
+          echo "✗ OBS.app not found"
+          exit 1
+        fi
+
+    - name: Configure CMake (Full Plugin Build)
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_LIBDATACHANNEL=ON \
+          -DBUILD_TESTING=OFF
+
+    - name: Build plugin
+      run: |
+        cd build
+        ninja obs-webrtc-link
+
+    - name: Package plugin
+      run: |
+        VERSION=$(cat VERSION | tr -d '[:space:]')
+        PACKAGE_DIR="obs-webrtc-link-${VERSION}-macos-universal"
+
+        mkdir -p ${PACKAGE_DIR}/obs-plugins
+        mkdir -p ${PACKAGE_DIR}/data/obs-plugins/obs-webrtc-link
+
+        cp build/obs-webrtc-link.so ${PACKAGE_DIR}/obs-plugins/
+        cp README.md ${PACKAGE_DIR}/
+        cp LICENSE ${PACKAGE_DIR}/
+        cp CHANGELOG.md ${PACKAGE_DIR}/
+
+        tar czf ${PACKAGE_DIR}.tar.gz ${PACKAGE_DIR}
+
+        echo "Package created: ${PACKAGE_DIR}.tar.gz"
+
+    - name: Upload plugin artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-plugin
+        path: obs-webrtc-link-*-macos-universal.tar.gz
+        retention-days: 7
 
   # ============================================================================
   # Test Jobs - Execute tests using built binaries
