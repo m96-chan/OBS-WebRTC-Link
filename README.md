@@ -87,14 +87,16 @@ graph LR
 
 ### Scenario 2: Direct P2P
 
-**Sender:**  
-- Choose “P2P Host”
+**Sender:**
+- Choose "P2P Host"
 - Copy the Session ID
 
-**Receiver:**  
+**Receiver:**
 - Add `WebRTC Link Source`
 - Select `P2P Client`
 - Paste Session ID
+
+**For detailed LiveKit setup instructions, see [LiveKit Setup Guide](docs/LIVEKIT_SETUP.md).**
 
 ---
 
