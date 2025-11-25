@@ -538,15 +538,18 @@ jobs:
 
         # Debug: Find where Xcode actually put the built libraries
         echo "Searching for built libraries..."
-        find build -name "*.dylib" -o -name "*.a" | head -20
+        find build -name "*.dylib" -o -name "*.framework" | head -20
+        echo "Searching for headers..."
+        find frontend -name "obs-frontend-api.h" 2>/dev/null || echo "No obs-frontend-api.h in frontend/"
 
         # Copy headers - copy entire libobs structure recursively
         echo "Copying libobs headers recursively..."
         find libobs -name "*.h" -exec sh -c 'mkdir -p "../obs-studio-build/include/$(dirname {})" && cp "{}" "../obs-studio-build/include/{}"' \;
 
-        # Copy obs-frontend-api headers
+        # Copy obs-frontend-api headers (In OBS 32.0.2 on macOS, these are in frontend/api/)
         mkdir -p ../obs-studio-build/include/obs-frontend-api
-        cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/obs-frontend-api/ || true
+        cp frontend/api/obs-frontend-api.h ../obs-studio-build/include/obs-frontend-api/ 2>/dev/null || \
+        cp UI/obs-frontend-api/obs-frontend-api.h ../obs-studio-build/include/obs-frontend-api/ 2>/dev/null || true
 
         # Copy build-generated config headers
         echo "Copying build-generated headers..."
@@ -555,18 +558,16 @@ jobs:
         # So we need to copy obsconfig.h to the same libobs directory
         cp build/config/obsconfig.h ../obs-studio-build/include/libobs/ 2>/dev/null || true
 
-        # Copy libraries (try multiple possible locations)
-        cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
-        cp build/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
-        cp build/libobs/libobs.*.dylib ../obs-studio-build/lib/ || true
+        # Copy libraries
+        # macOS Xcode builds libobs as a framework
+        echo "Copying libobs framework..."
+        if [ -d "build/libobs/Release/libobs.framework" ]; then
+          cp -R build/libobs/Release/libobs.framework ../obs-studio-build/lib/
+        fi
 
-        cp build/frontend/api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
-        cp build/UI/obs-frontend-api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
-        cp build/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
-        cp build/UI/obs-frontend-api/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
-
-        # Copy data files
-        cp -r data/libobs/*.effect ../obs-studio-build/data/libobs/ || true
+        # Copy obs-frontend-api dylib
+        echo "Copying obs-frontend-api dylib..."
+        cp build/frontend/api/Release/obs-frontend-api.dylib ../obs-studio-build/lib/ 2>/dev/null || true
 
         cd ..
 
