@@ -218,6 +218,10 @@ TEST_F(PeerConnectionTest, SetRemoteDescriptionSucceeds) {
 
     EXPECT_NO_THROW({ answerer->setRemoteDescription(SdpType::Offer, offerSdp); });
 
+    // Explicitly close connections before destruction to avoid race condition
+    offerer->close();
+    answerer->close();
+
     // Wait for cleanup before destroying connections
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
