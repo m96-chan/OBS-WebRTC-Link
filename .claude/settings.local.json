@@ -16,7 +16,11 @@
       "Bash(gh run view:*)",
       "Bash(gh run list:*)",
       "Bash(gh pr close:*)",
-      "Bash(gh label:*)"
+      "Bash(gh label:*)",
+      "Bash(git branch:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(cmake:*)"
     ],
     "deny": [],
     "ask": []
