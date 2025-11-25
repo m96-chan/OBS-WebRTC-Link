@@ -5,8 +5,10 @@
 
 #include "peer-connection.hpp"
 
+#include <chrono>
 #include <mutex>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -30,8 +32,9 @@ public:
                 rtcConfig.iceServers.emplace_back(server);
             }
 
-            // Enable automatic renegotiation for proper handling of multiple offers
-            rtcConfig.disableAutoNegotiation = false;
+            // Disable automatic renegotiation to maintain manual control over offer/answer
+            // This allows us to explicitly control when offers are created via createOffer()
+            rtcConfig.disableAutoNegotiation = true;
 
             // Create PeerConnection
             peerConnection_ = std::make_shared<rtc::PeerConnection>(rtcConfig);
@@ -107,9 +110,12 @@ public:
 
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
-            // Both initial and renegotiation use the same approach:
-            // creating a new data channel automatically triggers negotiationNeeded,
-            // and setLocalDescription will generate a new offer including all channels
+            if (isRenegotiation) {
+                // For renegotiation, we need to rollback the previous offer first
+                // then create a new offer that includes the new data channel
+                log(LogLevel::Debug, "Rolling back previous local description for renegotiation");
+                pc->setLocalDescription(rtc::Description::Type::Rollback);
+            }
             pc->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
@@ -315,9 +321,42 @@ private:
         // Set up data channel handler - must be set before setRemoteDescription
         peerConnection_->onDataChannel([this](std::shared_ptr<rtc::DataChannel> dc) {
             // Accept the data channel from the remote peer
-            // The answer will be generated automatically
             // Keep a reference to prevent it from being destroyed
-            dataChannel_ = dc;
+            // IMPORTANT: This callback is called from libdatachannel's thread,
+            // possibly from within setRemoteDescription() which holds the mutex.
+            // We must be very careful with locking to avoid deadlocks.
+
+            // First, store the data channel without generating answer yet
+            // (setRemoteDescription may still be in progress)
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                dataChannel_ = dc;
+            }
+
+            // Schedule answer generation asynchronously to avoid potential deadlock
+            // if this callback was triggered from within setRemoteDescription
+            std::thread([this]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+                std::shared_ptr<rtc::PeerConnection> pc;
+                bool hasRemote = false;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    pc = peerConnection_;
+                    hasRemote = hasRemoteDescription_;
+                }
+
+                // In manual negotiation mode, we need to explicitly generate the answer
+                // when a data channel is received from the remote peer
+                if (pc && hasRemote) {
+                    try {
+                        log(LogLevel::Debug, "Generating answer in response to remote data channel");
+                        pc->setLocalDescription(rtc::Description::Type::Answer);
+                    } catch (const std::exception& e) {
+                        log(LogLevel::Error, std::string("Failed to generate answer: ") + e.what());
+                    }
+                }
+            }).detach();
         });
     }
 
