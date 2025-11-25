@@ -143,6 +143,65 @@ chmod +x .git/hooks/pre-commit
 6. **Commit your changes**: Use clear, descriptive commit messages
 7. **Push and create a Pull Request**
 
+## Documentation Contributions
+
+### Adding Screenshots and Images
+
+When contributing screenshots or images for documentation:
+
+#### Image Guidelines
+
+1. **Format**
+   - **Preferred**: PNG for UI screenshots (lossless)
+   - **Alternative**: WebP for smaller file sizes
+   - **Avoid**: JPEG for UI screenshots (compression artifacts)
+
+2. **Size and Optimization**
+   - Maximum width: 1920px
+   - Recommended width for UI screenshots: 800-1200px
+   - Compress images to keep file sizes under 500KB
+   - Use appropriate tools:
+     - [pngquant](https://pngquant.org/): Lossy PNG compression
+     - [optipng](http://optipng.sourceforge.net/): Lossless PNG optimization
+     - [ImageOptim](https://imageoptim.com/) (macOS): All-in-one optimizer
+     - [squoosh.app](https://squoosh.app/): Web-based image optimizer
+
+3. **Naming Convention**
+   - Use lowercase with hyphens: `my-screenshot.png`
+   - Include context in filename: `obs-source-settings-whep.png`
+   - Avoid spaces and special characters
+
+4. **Privacy**
+   - Remove or blur any sensitive information (tokens, API keys, personal URLs)
+   - Use example/placeholder data where possible
+   - Example tokens: `eyJhbGc...` (truncated)
+   - Example URLs: `https://example.livekit.cloud`
+
+5. **Directory Structure**
+   ```
+   docs/images/
+   ├── screenshots/    # UI screenshots
+   ├── diagrams/       # Architecture and workflow diagrams
+   └── examples/       # Example use case images
+   ```
+
+#### Screenshot Checklist
+
+Before submitting screenshots:
+- [ ] Image is optimized and under 500KB
+- [ ] Sensitive information is removed/blurred
+- [ ] Filename follows naming convention
+- [ ] Placed in correct subdirectory
+- [ ] Referenced in documentation with descriptive alt text
+
+#### Example Image Reference
+
+```markdown
+![WHEP Source Settings](docs/images/screenshots/obs-source-settings-whep.png)
+```
+
+For more details, see [docs/images/README.md](images/README.md).
+
 ## Pull Request Guidelines
 
 - Ensure all CI checks pass (build, tests, formatting)
@@ -150,6 +209,7 @@ chmod +x .git/hooks/pre-commit
 - Reference related issues (e.g., "Closes #123")
 - Keep PRs focused on a single feature or fix
 - Add tests for new features
+- For documentation PRs: Ensure images are optimized and follow guidelines
 
 ## Questions?
 
