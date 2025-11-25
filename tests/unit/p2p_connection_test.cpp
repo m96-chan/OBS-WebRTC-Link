@@ -101,10 +101,12 @@ TEST_F(P2PConnectionTest, InitializeAsClient) {
 /**
  * @brief Test creating offer as Host
  * @note SKIPPED: Requires actual WebRTC connection (integration test)
- * See Issue #P1 for integration test strategy
+ * @see tests/integration/p2p_integration_test.cpp::CreateOfferAsHost
+ * @see Issue #67 for integration test strategy
  */
 TEST_F(P2PConnectionTest, CreateOfferAsHost) {
-    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. See Issue P1.";
+    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. "
+                 << "See tests/integration/p2p_integration_test.cpp::CreateOfferAsHost";
 
     auto connection = std::make_unique<P2PConnection>(config_);
 
@@ -123,10 +125,12 @@ TEST_F(P2PConnectionTest, CreateOfferAsHost) {
 /**
  * @brief Test setting remote answer as Host
  * @note SKIPPED: Requires actual WebRTC connection (integration test)
- * See Issue #P1 for integration test strategy
+ * @see tests/integration/p2p_integration_test.cpp::SetRemoteAnswerAsHost
+ * @see Issue #67 for integration test strategy
  */
 TEST_F(P2PConnectionTest, SetRemoteAnswerAsHost) {
-    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. See Issue P1.";
+    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. "
+                 << "See tests/integration/p2p_integration_test.cpp::SetRemoteAnswerAsHost";
 
     auto connection = std::make_unique<P2PConnection>(config_);
 
@@ -141,10 +145,12 @@ TEST_F(P2PConnectionTest, SetRemoteAnswerAsHost) {
 /**
  * @brief Test creating answer as Client
  * @note SKIPPED: Requires actual WebRTC connection (integration test)
- * See Issue #P1 for integration test strategy
+ * @see tests/integration/p2p_integration_test.cpp::CreateAnswerAsClient
+ * @see Issue #67 for integration test strategy
  */
 TEST_F(P2PConnectionTest, CreateAnswerAsClient) {
-    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. See Issue P1.";
+    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. "
+                 << "See tests/integration/p2p_integration_test.cpp::CreateAnswerAsClient";
 
     auto connection = std::make_unique<P2PConnection>(config_);
 
@@ -165,10 +171,12 @@ TEST_F(P2PConnectionTest, CreateAnswerAsClient) {
 /**
  * @brief Test ICE candidate handling
  * @note SKIPPED: Requires actual WebRTC connection (integration test)
- * See Issue #P1 for integration test strategy
+ * @see tests/integration/p2p_integration_test.cpp::HandleIceCandidate
+ * @see Issue #67 for integration test strategy
  */
 TEST_F(P2PConnectionTest, HandleIceCandidate) {
-    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. See Issue P1.";
+    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. "
+                 << "See tests/integration/p2p_integration_test.cpp::HandleIceCandidate";
 
     auto connection = std::make_unique<P2PConnection>(config_);
 
@@ -192,10 +200,12 @@ TEST_F(P2PConnectionTest, HandleIceCandidate) {
 /**
  * @brief Test adding remote ICE candidate
  * @note SKIPPED: Requires actual WebRTC connection (integration test)
- * See Issue #P1 for integration test strategy
+ * @see tests/integration/p2p_integration_test.cpp::AddRemoteIceCandidate
+ * @see Issue #67 for integration test strategy
  */
 TEST_F(P2PConnectionTest, AddRemoteIceCandidate) {
-    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. See Issue P1.";
+    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. "
+                 << "See tests/integration/p2p_integration_test.cpp::AddRemoteIceCandidate";
 
     auto connection = std::make_unique<P2PConnection>(config_);
 
@@ -226,10 +236,12 @@ TEST_F(P2PConnectionTest, GetSessionInfo) {
 /**
  * @brief Test disconnection
  * @note SKIPPED: Requires actual WebRTC connection (integration test)
- * See Issue #P1 for integration test strategy
+ * @see tests/integration/p2p_integration_test.cpp::DisconnectConnection
+ * @see Issue #67 for integration test strategy
  */
 TEST_F(P2PConnectionTest, Disconnect) {
-    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. See Issue P1.";
+    GTEST_SKIP() << "Skipped: Requires actual WebRTC connection. "
+                 << "See tests/integration/p2p_integration_test.cpp::DisconnectConnection";
 
     auto connection = std::make_unique<P2PConnection>(config_);
 
