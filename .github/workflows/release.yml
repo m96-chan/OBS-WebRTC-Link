@@ -803,10 +803,10 @@ jobs:
         echo "## Downloads" >> release_notes.md
         echo "" >> release_notes.md
         echo "- **Linux**: \`obs-webrtc-link-$VERSION-linux-x86_64.tar.gz\`" >> release_notes.md
-        echo "- **Windows**: \`obs-webrtc-link-$VERSION-windows-source.zip\` (requires local build)" >> release_notes.md
-        echo "- **macOS**: \`obs-webrtc-link-$VERSION-macos-source.zip\` (requires local build)" >> release_notes.md
+        echo "- **Windows (Installer)**: \`obs-webrtc-link-$VERSION-windows-installer.exe\`" >> release_notes.md
+        echo "- **Windows (Portable)**: \`obs-webrtc-link-$VERSION-windows-portable.zip\`" >> release_notes.md
         echo "" >> release_notes.md
-        echo "See [BUILD.md](https://github.com/${{ github.repository }}/blob/main/BUILD.md) for build instructions." >> release_notes.md
+        echo "> **Note**: macOS build is temporarily unavailable in this release. Please build from source. See [BUILD.md](https://github.com/${{ github.repository }}/blob/main/BUILD.md) for instructions." >> release_notes.md
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -819,7 +819,7 @@ jobs:
         files: |
           artifacts/obs-webrtc-link-linux/*.tar.gz
           artifacts/obs-webrtc-link-windows/*.zip
-          artifacts/obs-webrtc-link-macos/*.zip
+          artifacts/obs-webrtc-link-windows/*.exe
         fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -842,8 +842,9 @@ jobs:
         echo "Release created successfully!"
         echo ""
         echo "- Linux plugin binary: ✓"
-        echo "- Windows source package: ✓"
-        echo "- macOS source package: ✓"
+        echo "- Windows installer: ✓"
+        echo "- Windows portable ZIP: ✓"
+        echo "- macOS build: ⚠️ Temporarily disabled"
         echo "- GitHub Release: ✓"
         echo ""
         echo "The release is now available at:"
