@@ -264,9 +264,29 @@ jobs:
         Write-Host "Building OBS SDK libraries..."
         cmake --build build --config Release --target obs-frontend-api libobs
 
-        # Install SDK
+        # Manually install SDK components (skip CMake install to avoid frontend plugin issues)
         Write-Host "Installing OBS SDK..."
-        cmake --install build --config Release
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include"
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/lib"
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/data/libobs"
+
+        # Copy headers
+        Write-Host "Copying headers..."
+        Copy-Item -Path "libobs/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/util"
+        Copy-Item -Path "libobs/util/*.h" -Destination "../obs-studio-build/include/util/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "UI/obs-frontend-api/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+
+        # Copy libraries
+        Write-Host "Copying libraries..."
+        Copy-Item -Path "build/libobs/Release/obs.dll" -Destination "../obs-studio-build/lib/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "build/libobs/Release/obs.lib" -Destination "../obs-studio-build/lib/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "build/UI/obs-frontend-api/Release/obs-frontend-api.dll" -Destination "../obs-studio-build/lib/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "build/UI/obs-frontend-api/Release/obs-frontend-api.lib" -Destination "../obs-studio-build/lib/" -Force -ErrorAction SilentlyContinue
+
+        # Copy data files
+        Write-Host "Copying data files..."
+        Copy-Item -Path "data/libobs/*.effect" -Destination "../obs-studio-build/data/libobs/" -Force -ErrorAction SilentlyContinue
 
         cd ..
 
