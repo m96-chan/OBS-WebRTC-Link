@@ -213,50 +213,56 @@ jobs:
         $version = (Get-Content VERSION).Trim()
         echo "version=$version" >> $env:GITHUB_OUTPUT
 
-    - name: Cache OBS Studio
+    - name: Cache OBS Studio SDK
       id: cache-obs
       uses: actions/cache@v4
       with:
         path: obs-studio-build
-        key: obs-windows-30.2.2-${{ runner.os }}
+        key: obs-windows-sdk-30.2.2-${{ runner.os }}-v2
 
-    - name: Download and extract OBS Studio portable
+    - name: Build OBS Studio SDK from source
       if: steps.cache-obs.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        # Download OBS Studio 30.2.2 portable (includes SDK)
-        $url = "https://github.com/obsproject/obs-studio/releases/download/30.2.2/OBS-Studio-30.2.2-Windows.zip"
-        Write-Host "Downloading OBS Studio from $url"
-        Invoke-WebRequest -Uri $url -OutFile "obs-studio.zip"
+        # Clone OBS Studio
+        Write-Host "Cloning OBS Studio 30.2.2..."
+        git clone --depth 1 --branch 30.2.2 https://github.com/obsproject/obs-studio.git obs-src
+        cd obs-src
+        git submodule update --init --recursive
 
-        # Extract
-        Write-Host "Extracting OBS Studio..."
-        Expand-Archive -Path "obs-studio.zip" -DestinationPath "obs-studio-build" -Force
+        # Configure OBS (headers and import libraries only, no full build)
+        Write-Host "Configuring OBS Studio SDK..."
+        cmake -B build -G "Visual Studio 17 2022" -A x64 `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DENABLE_PLUGINS=OFF `
+          -DENABLE_UI=OFF `
+          -DENABLE_SCRIPTING=OFF `
+          -DBUILD_TESTS=OFF `
+          -DCMAKE_INSTALL_PREFIX="../obs-studio-build"
 
-        # Debug: List extracted contents
-        Write-Host "Listing extracted contents:"
-        Get-ChildItem -Path "obs-studio-build" -Recurse -Depth 2 | Select-Object FullName
+        # Build just the SDK components we need
+        Write-Host "Building OBS SDK libraries..."
+        cmake --build build --config Release --target obs-frontend-api libobs
 
-        # Find obs.dll
-        $obsDll = Get-ChildItem -Path "obs-studio-build" -Recurse -Filter "obs.dll" | Select-Object -First 1
-        if ($obsDll) {
-          Write-Host "Found obs.dll at: $($obsDll.FullName)"
-          Write-Host "OBS Studio extracted successfully"
+        # Install SDK
+        Write-Host "Installing OBS SDK..."
+        cmake --install build --config Release
+
+        cd ..
+
+        # Verify SDK installation
+        if (Test-Path "obs-studio-build/include/obs.h") {
+          Write-Host "OBS SDK installed successfully"
         } else {
-          Write-Error "OBS Studio extraction failed - obs.dll not found"
-          Get-ChildItem -Path "obs-studio-build" -Recurse | Select-Object FullName
+          Write-Error "OBS SDK installation failed"
           exit 1
         }
 
     - name: Build plugin with OBS SDK
       shell: pwsh
       run: |
-        # Find OBS installation paths
-        $obsRoot = (Get-ChildItem -Path "obs-studio-build" -Filter "bin" -Recurse -Directory | Select-Object -First 1).Parent.FullName
-        Write-Host "OBS Root: $obsRoot"
-
-        $obsInclude = Join-Path $obsRoot "include"
-        $obsLib = Join-Path $obsRoot "bin\64bit"
+        $obsInclude = "${{ github.workspace }}/obs-studio-build/include"
+        $obsLib = "${{ github.workspace }}/obs-studio-build/lib"
 
         Write-Host "OBS Include: $obsInclude"
         Write-Host "OBS Lib: $obsLib"
@@ -264,10 +270,7 @@ jobs:
         # Verify paths exist
         if (-not (Test-Path $obsInclude)) {
           Write-Error "OBS include directory not found: $obsInclude"
-          exit 1
-        }
-        if (-not (Test-Path $obsLib)) {
-          Write-Error "OBS lib directory not found: $obsLib"
+          Get-ChildItem -Path "${{ github.workspace }}/obs-studio-build" -Recurse | Select-Object FullName
           exit 1
         }
 
@@ -285,6 +288,7 @@ jobs:
           Write-Host "Plugin built successfully"
         } else {
           Write-Error "Plugin build failed - DLL not found"
+          Get-ChildItem -Path "build" -Recurse | Select-Object FullName
           exit 1
         }
 
@@ -432,7 +436,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install cmake ninja pkg-config openssl obs-studio
+        brew install cmake ninja pkg-config openssl obs
 
     - name: Get OBS paths
       id: obs-paths
