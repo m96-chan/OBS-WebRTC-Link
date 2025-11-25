@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version display in plugin metadata
 - Automated version bump script
 
-## [0.1.0] - 2025-01-25
+## [0.1.0] - 2025-11-25
 
 ### Added
 - Initial plugin structure
