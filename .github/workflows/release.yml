@@ -270,15 +270,14 @@ jobs:
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/lib"
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/data/libobs"
 
-        # Copy headers
-        Write-Host "Copying headers..."
+        # Copy headers - copy entire libobs directory structure recursively
+        Write-Host "Copying libobs headers recursively..."
+        Copy-Item -Path "libobs" -Destination "../obs-studio-build/include/" -Recurse -Force -Filter "*.h" -ErrorAction SilentlyContinue
+
+        # Also copy individual .h files from libobs root
         Copy-Item -Path "libobs/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/util"
-        Copy-Item -Path "libobs/util/*.h" -Destination "../obs-studio-build/include/util/" -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/graphics"
-        Copy-Item -Path "libobs/graphics/*.h" -Destination "../obs-studio-build/include/graphics/" -Force -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/media-io"
-        Copy-Item -Path "libobs/media-io/*.h" -Destination "../obs-studio-build/include/media-io/" -Force -ErrorAction SilentlyContinue
+
+        # Copy obs-frontend-api headers
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/obs-frontend-api"
         Copy-Item -Path "UI/obs-frontend-api/*.h" -Destination "../obs-studio-build/include/obs-frontend-api/" -Force -ErrorAction SilentlyContinue
 
@@ -534,14 +533,11 @@ jobs:
         echo "Searching for built libraries..."
         find build -name "*.dylib" -o -name "*.a" | head -20
 
-        # Copy headers
-        cp -r libobs/*.h ../obs-studio-build/include/ || true
-        mkdir -p ../obs-studio-build/include/util
-        cp -r libobs/util/*.h ../obs-studio-build/include/util/ || true
-        mkdir -p ../obs-studio-build/include/graphics
-        cp -r libobs/graphics/*.h ../obs-studio-build/include/graphics/ || true
-        mkdir -p ../obs-studio-build/include/media-io
-        cp -r libobs/media-io/*.h ../obs-studio-build/include/media-io/ || true
+        # Copy headers - copy entire libobs structure recursively
+        echo "Copying libobs headers recursively..."
+        find libobs -name "*.h" -exec sh -c 'mkdir -p "../obs-studio-build/include/$(dirname {})" && cp "{}" "../obs-studio-build/include/{}"' \;
+
+        # Copy obs-frontend-api headers
         mkdir -p ../obs-studio-build/include/obs-frontend-api
         cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/obs-frontend-api/ || true
 
