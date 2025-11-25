@@ -483,7 +483,6 @@ jobs:
         echo "Patching CMakeLists.txt..."
         sed -i.bak 's/add_subdirectory(libobs-metal)/# add_subdirectory(libobs-metal) # Removed for minimal SDK build/' CMakeLists.txt
         sed -i.bak 's/add_subdirectory(libobs-opengl)/# add_subdirectory(libobs-opengl) # Removed for minimal SDK build/' CMakeLists.txt
-        sed -i.bak 's/add_subdirectory(frontend)/# add_subdirectory(frontend) # Skip OBS.app build/' CMakeLists.txt
 
         # Configure OBS (headers and libraries only, minimal build)
         echo "Configuring OBS Studio SDK..."
@@ -498,30 +497,23 @@ jobs:
 
         # Build just libobs and obs-frontend-api
         echo "Building OBS SDK libraries..."
-        cmake --build build --config Release --target libobs
+        cmake --build build --config Release --target libobs obs-frontend-api
 
-        # Build obs-frontend-api separately (it's in frontend/api subdirectory)
-        cd frontend/api
-        cmake -B build -G Xcode \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_PREFIX_PATH="../../build/libobs/Release" \
-          -DCMAKE_INSTALL_PREFIX="../../../obs-studio-build"
-        cmake --build build --config Release
-        cd ../..
-
-        # Manually install SDK components
+        # Manually install SDK components (skip CMake install to avoid OBS.app requirement)
         echo "Installing OBS SDK..."
         mkdir -p ../obs-studio-build/include
         mkdir -p ../obs-studio-build/lib
         mkdir -p ../obs-studio-build/data/libobs
 
         # Copy headers
-        cp -r libobs/*.h ../obs-studio-build/include/
-        cp -r frontend/api/*.h ../obs-studio-build/include/
+        cp -r libobs/*.h ../obs-studio-build/include/ || true
+        mkdir -p ../obs-studio-build/include/util
+        cp -r libobs/util/*.h ../obs-studio-build/include/util/ || true
+        cp -r frontend/api/*.h ../obs-studio-build/include/ || true
 
         # Copy libraries
         cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ || true
-        cp frontend/api/build/Release/libobs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
+        cp build/frontend/api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
 
         # Copy data files
         cp -r data/libobs/*.effect ../obs-studio-build/data/libobs/ || true
