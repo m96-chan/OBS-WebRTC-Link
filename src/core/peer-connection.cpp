@@ -105,12 +105,13 @@ public:
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
             if (isRenegotiation) {
-                // For renegotiation, libdatachannel requires special handling
-                // We need to explicitly trigger a new offer by calling setLocalDescription()
-                // The new data channel created above will be included in the new SDP
-                pc->setLocalDescription();
+                // For renegotiation, we must explicitly create a new offer
+                // and set it as the local description
+                // This ensures the new data channel is included in the SDP
+                auto offer = pc->createOffer();
+                pc->setLocalDescription(offer);
             } else {
-                // For initial offer, specify the type explicitly
+                // For initial offer, just specify the type and let libdatachannel generate it
                 pc->setLocalDescription(rtc::Description::Type::Offer);
             }
 
