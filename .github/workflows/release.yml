@@ -275,7 +275,10 @@ jobs:
         Copy-Item -Path "libobs/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/util"
         Copy-Item -Path "libobs/util/*.h" -Destination "../obs-studio-build/include/util/" -Force -ErrorAction SilentlyContinue
-        Copy-Item -Path "UI/obs-frontend-api/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/graphics"
+        Copy-Item -Path "libobs/graphics/*.h" -Destination "../obs-studio-build/include/graphics/" -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/obs-frontend-api"
+        Copy-Item -Path "UI/obs-frontend-api/*.h" -Destination "../obs-studio-build/include/obs-frontend-api/" -Force -ErrorAction SilentlyContinue
 
         # Copy libraries
         Write-Host "Copying libraries..."
@@ -533,7 +536,10 @@ jobs:
         cp -r libobs/*.h ../obs-studio-build/include/ || true
         mkdir -p ../obs-studio-build/include/util
         cp -r libobs/util/*.h ../obs-studio-build/include/util/ || true
-        cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/ || true
+        mkdir -p ../obs-studio-build/include/graphics
+        cp -r libobs/graphics/*.h ../obs-studio-build/include/graphics/ || true
+        mkdir -p ../obs-studio-build/include/obs-frontend-api
+        cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/obs-frontend-api/ || true
 
         # Copy libraries (try multiple possible locations)
         cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
