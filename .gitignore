@@ -109,6 +109,10 @@ Testing/
 docs/_build/
 docs/html/
 docs/latex/
+docs/xml/
+docs/rtf/
+docs/man/
+Doxyfile.bak
 
 # Docker environment secrets
 docker/**/.env
