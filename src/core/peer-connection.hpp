@@ -51,6 +51,27 @@ enum class SdpType {
 };
 
 /**
+ * @brief Video frame structure
+ */
+struct VideoFrame {
+    std::vector<uint8_t> data;
+    uint32_t width;
+    uint32_t height;
+    uint64_t timestamp;
+    bool keyframe;
+};
+
+/**
+ * @brief Audio frame structure
+ */
+struct AudioFrame {
+    std::vector<uint8_t> data;
+    uint32_t sampleRate;
+    uint32_t channels;
+    uint64_t timestamp;
+};
+
+/**
  * @brief Callback function types
  */
 using LogCallback = std::function<void(LogLevel level, const std::string& message)>;
@@ -58,6 +79,8 @@ using StateChangeCallback = std::function<void(ConnectionState state)>;
 using IceCandidateCallback =
     std::function<void(const std::string& candidate, const std::string& mid)>;
 using LocalDescriptionCallback = std::function<void(SdpType type, const std::string& sdp)>;
+using VideoFrameCallback = std::function<void(const VideoFrame& frame)>;
+using AudioFrameCallback = std::function<void(const AudioFrame& frame)>;
 
 /**
  * @brief Configuration for PeerConnection
@@ -68,6 +91,8 @@ struct PeerConnectionConfig {
     StateChangeCallback stateCallback;
     IceCandidateCallback iceCandidateCallback;
     LocalDescriptionCallback localDescriptionCallback;
+    VideoFrameCallback videoFrameCallback;
+    AudioFrameCallback audioFrameCallback;
 };
 
 /**
