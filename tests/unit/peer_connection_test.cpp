@@ -690,21 +690,22 @@ TEST_F(PeerConnectionTest, OfferCreationPerformance) {
 
 // Test: Multiple offer-answer exchanges
 TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
-    auto config1 = createTestConfig();
+    CallbackState state;
+    auto config1 = createTestConfigWithState(state);
     auto pc1 = std::make_unique<PeerConnection>(config1);
 
     // First offer
     pc1->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(localDescriptions.empty());
-    std::string offer1 = localDescriptions[0].second;
-    localDescriptions.clear();
+    ASSERT_FALSE(state.localDescriptions.empty());
+    std::string offer1 = state.localDescriptions[0].second;
+    state.localDescriptions.clear();
 
     // Second offer
     pc1->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    ASSERT_FALSE(localDescriptions.empty());
-    std::string offer2 = localDescriptions[0].second;
+    ASSERT_FALSE(state.localDescriptions.empty());
+    std::string offer2 = state.localDescriptions[0].second;
 
     // Both offers should be valid
     EXPECT_FALSE(offer1.empty());
