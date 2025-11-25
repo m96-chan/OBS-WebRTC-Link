@@ -572,10 +572,14 @@ jobs:
         cd ..
 
         # Verify SDK installation
-        if [ -f "obs-studio-build/include/obs.h" ]; then
+        if [ -f "obs-studio-build/include/libobs/obs.h" ] && [ -d "obs-studio-build/lib/libobs.framework" ]; then
           echo "OBS SDK installed successfully"
         else
           echo "OBS SDK installation failed"
+          echo "Checking for obs.h..."
+          ls -la obs-studio-build/include/libobs/obs.h 2>/dev/null || echo "obs.h not found"
+          echo "Checking for libobs.framework..."
+          ls -la obs-studio-build/lib/libobs.framework 2>/dev/null || echo "libobs.framework not found"
           exit 1
         fi
 
