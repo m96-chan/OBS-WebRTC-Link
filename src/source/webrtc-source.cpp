@@ -283,6 +283,33 @@ private:
             }
         };
 
+        // Setup video frame callback
+        pcConfig.videoFrameCallback = [this](const core::VideoFrame& coreFrame) {
+            if (config_.videoCallback) {
+                // Convert core::VideoFrame to source::VideoFrame
+                source::VideoFrame sourceFrame;
+                sourceFrame.data = coreFrame.data;
+                sourceFrame.width = coreFrame.width;
+                sourceFrame.height = coreFrame.height;
+                sourceFrame.timestamp = coreFrame.timestamp;
+                sourceFrame.keyframe = coreFrame.keyframe;
+                config_.videoCallback(sourceFrame);
+            }
+        };
+
+        // Setup audio frame callback
+        pcConfig.audioFrameCallback = [this](const core::AudioFrame& coreFrame) {
+            if (config_.audioCallback) {
+                // Convert core::AudioFrame to source::AudioFrame
+                source::AudioFrame sourceFrame;
+                sourceFrame.data = coreFrame.data;
+                sourceFrame.sampleRate = coreFrame.sampleRate;
+                sourceFrame.channels = coreFrame.channels;
+                sourceFrame.timestamp = coreFrame.timestamp;
+                config_.audioCallback(sourceFrame);
+            }
+        };
+
         // Create peer connection
         peerConnection_ = std::make_unique<core::PeerConnection>(pcConfig);
     }

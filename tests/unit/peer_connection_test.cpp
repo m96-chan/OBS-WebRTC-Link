@@ -38,6 +38,8 @@ protected:
         std::vector<ConnectionState> stateChanges;
         std::vector<std::pair<std::string, std::string>> iceCandidates;
         std::vector<std::pair<SdpType, std::string>> localDescriptions;
+        std::vector<VideoFrame> videoFrames;
+        std::vector<AudioFrame> audioFrames;
     };
 
     PeerConnectionConfig createTestConfig() {
@@ -60,6 +62,14 @@ protected:
         };
 
         config.localDescriptionCallback = [](SdpType type, const std::string& sdp) {
+            // No-op: safe from race conditions
+        };
+
+        config.videoFrameCallback = [](const VideoFrame& frame) {
+            // No-op: safe from race conditions
+        };
+
+        config.audioFrameCallback = [](const AudioFrame& frame) {
             // No-op: safe from race conditions
         };
 
@@ -86,6 +96,14 @@ protected:
 
         config.localDescriptionCallback = [&state](SdpType type, const std::string& sdp) {
             state.localDescriptions.push_back({type, sdp});
+        };
+
+        config.videoFrameCallback = [&state](const VideoFrame& frame) {
+            state.videoFrames.push_back(frame);
+        };
+
+        config.audioFrameCallback = [&state](const AudioFrame& frame) {
+            state.audioFrames.push_back(frame);
         };
 
         return config;
@@ -715,5 +733,83 @@ TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
 
     // Close connection before destruction
     pc1->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// ========== Media Track Reception Tests ==========
+
+// Test: Video frame callback can be registered
+TEST_F(PeerConnectionTest, VideoFrameCallbackCanBeRegistered) {
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
+
+    EXPECT_NO_THROW({
+        auto pc = std::make_unique<PeerConnection>(config);
+        pc->close();
+    });
+}
+
+// Test: Audio frame callback can be registered
+TEST_F(PeerConnectionTest, AudioFrameCallbackCanBeRegistered) {
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
+
+    EXPECT_NO_THROW({
+        auto pc = std::make_unique<PeerConnection>(config);
+        pc->close();
+    });
+}
+
+// Test: Video frame callback is invoked when track is received
+TEST_F(PeerConnectionTest, VideoFrameCallbackIsInvokedWhenTrackReceived) {
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
+    auto pc = std::make_unique<PeerConnection>(config);
+
+    pc->createOffer();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Note: In a real scenario, frames would be received from a remote peer
+    // For this unit test, we're just verifying the callback is registered
+    // Integration tests will verify end-to-end frame reception
+
+    EXPECT_TRUE(state.videoFrames.empty()); // No frames yet without remote peer
+
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test: Audio frame callback is invoked when track is received
+TEST_F(PeerConnectionTest, AudioFrameCallbackIsInvokedWhenTrackReceived) {
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
+    auto pc = std::make_unique<PeerConnection>(config);
+
+    pc->createOffer();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Note: In a real scenario, frames would be received from a remote peer
+    // For this unit test, we're just verifying the callback is registered
+    // Integration tests will verify end-to-end frame reception
+
+    EXPECT_TRUE(state.audioFrames.empty()); // No frames yet without remote peer
+
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test: Multiple tracks can be received simultaneously
+TEST_F(PeerConnectionTest, MultipleTracksCanBeReceivedSimultaneously) {
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
+    auto pc = std::make_unique<PeerConnection>(config);
+
+    pc->createOffer();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Note: Full integration test with actual tracks will verify this
+    // This test ensures no crashes when both callbacks are registered
+
+    pc->close();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }

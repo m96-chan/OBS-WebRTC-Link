@@ -5,6 +5,7 @@
 
 #include "peer-connection.hpp"
 
+#include <cstring>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
@@ -244,6 +245,14 @@ public:
             log(LogLevel::Info, "Closing PeerConnection");
 
             try {
+                // Close and clear all tracks
+                for (auto& track : tracks_) {
+                    if (track) {
+                        track->close();
+                    }
+                }
+                tracks_.clear();
+
                 // Close and clear all data channels
                 if (dataChannel_) {
                     dataChannel_->close();
@@ -338,6 +347,83 @@ private:
             dataChannel_ = dc;
             log(LogLevel::Debug, "Data channel received from remote peer");
         });
+
+        // Set up track handler for receiving media tracks
+        peerConnection_->onTrack([this](std::shared_ptr<rtc::Track> track) {
+            handleTrack(track);
+        });
+    }
+
+    void handleTrack(std::shared_ptr<rtc::Track> track) {
+        log(LogLevel::Info, "Media track received: " + std::string(track->mid()));
+
+        // Get track description to determine media type
+        auto description = track->description();
+        std::string mediaType = description.type();
+
+        log(LogLevel::Debug, "Track media type: " + mediaType);
+
+        // Store track reference
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            tracks_.push_back(track);
+        }
+
+        // Set up frame callback
+        track->onFrame([this, mediaType](rtc::binary data, rtc::FrameInfo frameInfo) {
+            handleFrame(data, frameInfo, mediaType);
+        });
+
+        log(LogLevel::Debug, "Track handler registered for: " + std::string(track->mid()));
+    }
+
+    void handleFrame(const rtc::binary& data, const rtc::FrameInfo& frameInfo, const std::string& mediaType) {
+        try {
+            if (mediaType == "video") {
+                handleVideoFrame(data, frameInfo);
+            } else if (mediaType == "audio") {
+                handleAudioFrame(data, frameInfo);
+            } else {
+                log(LogLevel::Warning, "Unknown media type: " + mediaType);
+            }
+        } catch (const std::exception& e) {
+            log(LogLevel::Error, std::string("Error handling frame: ") + e.what());
+        }
+    }
+
+    void handleVideoFrame(const rtc::binary& data, const rtc::FrameInfo& frameInfo) {
+        if (!config_.videoFrameCallback) {
+            return;
+        }
+
+        VideoFrame frame;
+        frame.data.resize(data.size());
+        std::memcpy(frame.data.data(), data.data(), data.size());
+        frame.timestamp = frameInfo.timestamp;
+        frame.keyframe = false; // TODO: Detect keyframe from RTP packet
+        frame.width = 0;  // TODO: Parse from codec-specific data
+        frame.height = 0; // TODO: Parse from codec-specific data
+
+        log(LogLevel::Debug, "Video frame received: " + std::to_string(data.size()) + " bytes, timestamp: " + std::to_string(frameInfo.timestamp));
+
+        config_.videoFrameCallback(frame);
+    }
+
+    void handleAudioFrame(const rtc::binary& data, const rtc::FrameInfo& frameInfo) {
+        if (!config_.audioFrameCallback) {
+            return;
+        }
+
+        AudioFrame frame;
+        frame.data.resize(data.size());
+        std::memcpy(frame.data.data(), data.data(), data.size());
+        frame.timestamp = frameInfo.timestamp;
+        frame.sampleRate = 48000; // TODO: Parse from SDP or codec configuration
+        frame.channels = 2;       // TODO: Parse from SDP or codec configuration
+
+        log(LogLevel::Debug, "Audio frame received: " + std::to_string(data.size()) + " bytes, timestamp: " + std::to_string(frameInfo.timestamp));
+
+        config_.audioFrameCallback(frame);
     }
 
     void handleLocalDescription(const rtc::Description& description) {
@@ -423,6 +509,7 @@ private:
     std::shared_ptr<rtc::PeerConnection> peerConnection_;
     std::shared_ptr<rtc::DataChannel> dataChannel_;  // Keep reference to data channel
     std::vector<std::shared_ptr<rtc::DataChannel>> additionalDataChannels_;  // Additional data channels for renegotiation
+    std::vector<std::shared_ptr<rtc::Track>> tracks_;  // Keep references to media tracks
     ConnectionState state_;
     bool hasRemoteDescription_;
     std::string remoteDescriptionSdp_;
