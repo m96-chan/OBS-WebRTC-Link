@@ -240,6 +240,11 @@ jobs:
         Remove-Item -Recurse -Force libobs-d3d11 -ErrorAction SilentlyContinue
         Remove-Item -Recurse -Force libobs-winrt -ErrorAction SilentlyContinue
 
+        # Patch CMakeLists.txt to comment out add_subdirectory calls for removed directories
+        Write-Host "Patching CMakeLists.txt..."
+        (Get-Content CMakeLists.txt) -replace 'add_subdirectory\(libobs-d3d11\)', '# add_subdirectory(libobs-d3d11) # Removed for minimal SDK build' | Set-Content CMakeLists.txt
+        (Get-Content CMakeLists.txt) -replace 'add_subdirectory\(libobs-winrt\)', '# add_subdirectory(libobs-winrt) # Removed for minimal SDK build' | Set-Content CMakeLists.txt
+
         # Configure OBS with deps
         Write-Host "Configuring OBS Studio SDK..."
         $depsPath = "${{ github.workspace }}\obs-deps"
@@ -470,6 +475,10 @@ jobs:
         # Remove libobs-metal (requires Swift compiler not available in CI)
         echo "Removing libobs-metal directory to avoid Swift dependency..."
         rm -rf libobs-metal
+
+        # Patch CMakeLists.txt to comment out add_subdirectory call for removed directory
+        echo "Patching CMakeLists.txt..."
+        sed -i.bak 's/add_subdirectory(libobs-metal)/# add_subdirectory(libobs-metal) # Removed for minimal SDK build/' CMakeLists.txt
 
         # Configure OBS (headers and libraries only, minimal build)
         echo "Configuring OBS Studio SDK..."
