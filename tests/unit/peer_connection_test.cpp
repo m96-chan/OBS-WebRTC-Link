@@ -610,7 +610,7 @@ TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
 
     // Second offer
     pc1->createOffer();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     ASSERT_FALSE(localDescriptions.empty());
     std::string offer2 = localDescriptions[0].second;
 
