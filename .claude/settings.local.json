@@ -20,7 +20,22 @@
       "Bash(git branch:*)",
       "Bash(gh pr list:*)",
       "Bash(gh issue view:*)",
-      "Bash(cmake:*)"
+      "Bash(cmake:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh release list:*)",
+      "Bash(gh auth:*)",
+      "Bash(where cmake:*)",
+      "Bash(\"C:\\Program Files\\CMake\\bin\\cmake.exe\" --version)",
+      "Bash(echo:*)",
+      "Bash(git pull:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git stash:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh release create:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

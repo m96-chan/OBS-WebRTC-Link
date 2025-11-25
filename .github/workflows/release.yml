@@ -529,11 +529,11 @@ jobs:
         cp -r libobs/*.h ../obs-studio-build/include/ || true
         mkdir -p ../obs-studio-build/include/util
         cp -r libobs/util/*.h ../obs-studio-build/include/util/ || true
-        cp -r frontend/api/*.h ../obs-studio-build/include/ || true
+        cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/ || true
 
         # Copy libraries
         cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ || true
-        cp build/frontend/api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
+        cp build/UI/obs-frontend-api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
 
         # Copy data files
         cp -r data/libobs/*.effect ../obs-studio-build/data/libobs/ || true
