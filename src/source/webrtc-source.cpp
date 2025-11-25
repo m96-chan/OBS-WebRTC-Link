@@ -211,31 +211,42 @@ private:
         // Initialize peer connection config
         core::PeerConnectionConfig pcConfig;
 
-        // Setup callbacks
-        pcConfig.onConnected = [this]() {
-            active_ = true;
-            setConnectionState(ConnectionState::Connected);
-            if (reconnectionManager_) {
-                reconnectionManager_->onConnectionSuccess();
+        // Setup state change callback
+        pcConfig.stateCallback = [this](core::ConnectionState state) {
+            switch (state) {
+                case core::ConnectionState::Connected:
+                case core::ConnectionState::Completed:
+                    active_ = true;
+                    setConnectionState(ConnectionState::Connected);
+                    if (reconnectionManager_) {
+                        reconnectionManager_->onConnectionSuccess();
+                    }
+                    break;
+
+                case core::ConnectionState::Disconnected:
+                case core::ConnectionState::Closed:
+                    active_ = false;
+                    setConnectionState(ConnectionState::Disconnected);
+                    if (reconnectionManager_ && config_.enableAutoReconnect) {
+                        reconnectionManager_->scheduleReconnect();
+                    }
+                    break;
+
+                case core::ConnectionState::Failed:
+                    active_ = false;
+                    setConnectionState(ConnectionState::Failed);
+                    if (reconnectionManager_ && config_.enableAutoReconnect) {
+                        reconnectionManager_->scheduleReconnect();
+                    }
+                    break;
+
+                default:
+                    break;
             }
         };
 
-        pcConfig.onDisconnected = [this]() {
-            active_ = false;
-            setConnectionState(ConnectionState::Disconnected);
-            if (reconnectionManager_ && config_.enableAutoReconnect) {
-                reconnectionManager_->scheduleReconnect();
-            }
-        };
-
-        pcConfig.onError = [this](const std::string& error) {
-            if (config_.errorCallback) {
-                config_.errorCallback(error);
-            }
-            setConnectionState(ConnectionState::Failed);
-        };
-
-        pcConfig.onIceCandidate = [this](const std::string& candidate, const std::string& mid) {
+        // Setup ICE candidate callback
+        pcConfig.iceCandidateCallback = [this](const std::string& candidate, const std::string& mid) {
             if (signalingClient_ && signalingClient_->isConnected()) {
                 try {
                     signalingClient_->sendIceCandidate(candidate, mid);
@@ -247,33 +258,30 @@ private:
             }
         };
 
-        pcConfig.onOfferCreated = [this](const std::string& sdp) {
+        // Setup local description callback (for both offer and answer)
+        pcConfig.localDescriptionCallback = [this](core::SdpType type, const std::string& sdp) {
             if (signalingClient_ && signalingClient_->isConnected()) {
                 try {
-                    signalingClient_->sendOffer(sdp);
+                    if (type == core::SdpType::Offer) {
+                        signalingClient_->sendOffer(sdp);
+                    } else {
+                        signalingClient_->sendAnswer(sdp);
+                    }
                 } catch (const std::exception& e) {
                     if (config_.errorCallback) {
-                        config_.errorCallback(std::string("Failed to send offer: ") + e.what());
+                        config_.errorCallback(std::string("Failed to send SDP: ") + e.what());
                     }
                 }
             }
         };
 
-        pcConfig.onAnswerCreated = [this](const std::string& sdp) {
-            if (signalingClient_ && signalingClient_->isConnected()) {
-                try {
-                    signalingClient_->sendAnswer(sdp);
-                } catch (const std::exception& e) {
-                    if (config_.errorCallback) {
-                        config_.errorCallback(std::string("Failed to send answer: ") + e.what());
-                    }
-                }
+        // Setup log callback
+        pcConfig.logCallback = [this](core::LogLevel level, const std::string& message) {
+            // Only report errors via error callback
+            if (level == core::LogLevel::Error && config_.errorCallback) {
+                config_.errorCallback(message);
             }
         };
-
-        // Video/Audio track callbacks
-        pcConfig.onVideoFrame = config_.videoCallback;
-        pcConfig.onAudioFrame = config_.audioCallback;
 
         // Create peer connection
         peerConnection_ = std::make_unique<core::PeerConnection>(pcConfig);
@@ -286,8 +294,10 @@ private:
         }
 
         try {
-            peerConnection_->setRemoteDescription(sdp, "offer");
-            // Answer will be created and sent via onAnswerCreated callback
+            peerConnection_->setRemoteDescription(core::SdpType::Offer, sdp);
+            // Create answer after setting remote offer
+            peerConnection_->createAnswer();
+            // Answer will be sent via localDescriptionCallback
         } catch (const std::exception& e) {
             if (config_.errorCallback) {
                 config_.errorCallback(std::string("Failed to handle remote offer: ") + e.what());
@@ -299,7 +309,7 @@ private:
     {
         if (peerConnection_) {
             try {
-                peerConnection_->setRemoteDescription(sdp, "answer");
+                peerConnection_->setRemoteDescription(core::SdpType::Answer, sdp);
             } catch (const std::exception& e) {
                 if (config_.errorCallback) {
                     config_.errorCallback(std::string("Failed to handle remote answer: ") + e.what());
