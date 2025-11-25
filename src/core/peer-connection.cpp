@@ -20,7 +20,7 @@ class PeerConnection::Impl {
 public:
     explicit Impl(const PeerConnectionConfig& config)
         : config_(config), state_(ConnectionState::New), hasRemoteDescription_(false),
-          remoteDescriptionSdp_(""), pendingCandidates_() {
+          remoteDescriptionSdp_(""), pendingCandidates_(), offerCount_(0) {
         try {
             // Configure libdatachannel
             rtc::Configuration rtcConfig;
@@ -53,6 +53,8 @@ public:
 
     void createOffer() {
         std::shared_ptr<rtc::PeerConnection> pc;
+        bool isRenegotiation = false;
+
         {
             std::lock_guard<std::mutex> lock(mutex_);
 
@@ -61,10 +63,18 @@ public:
             }
 
             pc = peerConnection_;
+
+            // Check if this is a renegotiation (not the first offer)
+            isRenegotiation = (offerCount_ > 0);
+            offerCount_++;
         }
 
         try {
-            log(LogLevel::Info, "Creating offer");
+            if (isRenegotiation) {
+                log(LogLevel::Info, "Creating renegotiation offer");
+            } else {
+                log(LogLevel::Info, "Creating initial offer");
+            }
 
             // Create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
@@ -72,12 +82,24 @@ public:
             // Use a unique label for each offer to ensure renegotiation works
             // Note: We release the mutex before creating the data channel to avoid potential deadlocks
             // if libdatachannel calls our callbacks synchronously
-            static int offerCount = 0;
-            auto dc = pc->createDataChannel("negotiation-" + std::to_string(++offerCount));
+            int currentOfferCount;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                currentOfferCount = offerCount_;
+            }
+
+            auto dc = pc->createDataChannel("negotiation-" + std::to_string(currentOfferCount));
 
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                dataChannel_ = dc;
+                // Store the new data channel
+                if (isRenegotiation) {
+                    // For renegotiation, keep both old and new channels
+                    additionalDataChannels_.push_back(dc);
+                } else {
+                    // For initial offer, use the main data channel
+                    dataChannel_ = dc;
+                }
             }
 
             // Trigger local description generation
@@ -202,11 +224,18 @@ public:
             log(LogLevel::Info, "Closing PeerConnection");
 
             try {
-                // Close and clear data channel first
+                // Close and clear all data channels
                 if (dataChannel_) {
                     dataChannel_->close();
                     dataChannel_.reset();
                 }
+
+                for (auto& dc : additionalDataChannels_) {
+                    if (dc) {
+                        dc->close();
+                    }
+                }
+                additionalDataChannels_.clear();
 
                 peerConnection_->close();
                 peerConnection_.reset();
@@ -368,10 +397,12 @@ private:
     PeerConnectionConfig config_;
     std::shared_ptr<rtc::PeerConnection> peerConnection_;
     std::shared_ptr<rtc::DataChannel> dataChannel_;  // Keep reference to data channel
+    std::vector<std::shared_ptr<rtc::DataChannel>> additionalDataChannels_;  // Additional data channels for renegotiation
     ConnectionState state_;
     bool hasRemoteDescription_;
     std::string remoteDescriptionSdp_;
     std::vector<std::pair<std::string, std::string>> pendingCandidates_;  // Buffered candidates
+    int offerCount_;  // Track number of offers for renegotiation detection
     mutable std::mutex mutex_;  // Mutable for const methods
 };
 
