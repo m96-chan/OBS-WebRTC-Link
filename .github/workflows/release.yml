@@ -281,6 +281,11 @@ jobs:
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/obs-frontend-api"
         Copy-Item -Path "UI/obs-frontend-api/*.h" -Destination "../obs-studio-build/include/obs-frontend-api/" -Force -ErrorAction SilentlyContinue
 
+        # Copy build-generated config headers
+        Write-Host "Copying build-generated headers..."
+        Copy-Item -Path "build/config/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "build/libobs/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+
         # Copy libraries
         Write-Host "Copying libraries..."
         Copy-Item -Path "build/libobs/Release/obs.dll" -Destination "../obs-studio-build/lib/" -Force -ErrorAction SilentlyContinue
@@ -540,6 +545,11 @@ jobs:
         # Copy obs-frontend-api headers
         mkdir -p ../obs-studio-build/include/obs-frontend-api
         cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/obs-frontend-api/ || true
+
+        # Copy build-generated config headers
+        echo "Copying build-generated headers..."
+        find build/config -name "*.h" -exec cp "{}" ../obs-studio-build/include/ \; 2>/dev/null || true
+        find build/libobs -name "*.h" -exec cp "{}" ../obs-studio-build/include/ \; 2>/dev/null || true
 
         # Copy libraries (try multiple possible locations)
         cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
