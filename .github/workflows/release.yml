@@ -277,6 +277,8 @@ jobs:
         Copy-Item -Path "libobs/util/*.h" -Destination "../obs-studio-build/include/util/" -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/graphics"
         Copy-Item -Path "libobs/graphics/*.h" -Destination "../obs-studio-build/include/graphics/" -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/media-io"
+        Copy-Item -Path "libobs/media-io/*.h" -Destination "../obs-studio-build/include/media-io/" -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Force -Path "../obs-studio-build/include/obs-frontend-api"
         Copy-Item -Path "UI/obs-frontend-api/*.h" -Destination "../obs-studio-build/include/obs-frontend-api/" -Force -ErrorAction SilentlyContinue
 
@@ -538,6 +540,8 @@ jobs:
         cp -r libobs/util/*.h ../obs-studio-build/include/util/ || true
         mkdir -p ../obs-studio-build/include/graphics
         cp -r libobs/graphics/*.h ../obs-studio-build/include/graphics/ || true
+        mkdir -p ../obs-studio-build/include/media-io
+        cp -r libobs/media-io/*.h ../obs-studio-build/include/media-io/ || true
         mkdir -p ../obs-studio-build/include/obs-frontend-api
         cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/obs-frontend-api/ || true
 
