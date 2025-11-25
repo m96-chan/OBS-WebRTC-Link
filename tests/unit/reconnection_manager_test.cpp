@@ -58,7 +58,7 @@ TEST_F(ReconnectionManagerTest, StartsInIdleState) {
  * @brief Test that ReconnectionManager schedules reconnection
  */
 TEST_F(ReconnectionManagerTest, SchedulesReconnection) {
-    bool reconnectCalled = false;
+    std::atomic<bool> reconnectCalled{false};
 
     ReconnectionConfig config;
     config.maxRetries = 5;
@@ -72,10 +72,19 @@ TEST_F(ReconnectionManagerTest, SchedulesReconnection) {
     manager.scheduleReconnect();
     EXPECT_TRUE(manager.isReconnecting());
 
-    // Wait for reconnect callback
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Wait for reconnect callback with timeout (more reliable than fixed sleep)
+    auto startTime = std::chrono::steady_clock::now();
+    auto timeout = std::chrono::milliseconds(1000);  // Generous timeout for slow CI
 
-    EXPECT_TRUE(reconnectCalled);
+    while (!reconnectCalled.load()) {
+        auto elapsed = std::chrono::steady_clock::now() - startTime;
+        if (elapsed >= timeout) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_TRUE(reconnectCalled.load()) << "Reconnect callback was not invoked within timeout";
 }
 
 /**
