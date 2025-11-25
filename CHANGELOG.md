@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-11-25
+
+### Changed
+- Temporarily disabled macOS build due to simde headers compilation issue
+- This release includes Windows and Linux binaries only
+
+### Note
+- macOS support will be restored in a future release once the OBS 32.0.2 simde dependency issue is resolved
+
 ## [0.1.1] - 2025-11-25
 
 ### Added
@@ -62,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiveKit setup guide
 - Docker development environment setup
 
-[Unreleased]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/m96-chan/OBS-WebRTC-Link/releases/tag/v0.1.0
