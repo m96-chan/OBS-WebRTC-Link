@@ -226,7 +226,7 @@ jobs:
       run: |
         # Download OBS dependencies (obs-deps)
         Write-Host "Downloading OBS dependencies..."
-        $obsDepsUrl = "https://github.com/obsproject/obs-deps/releases/download/2024-11-09/windows-deps-2024-11-09-x64.zip"
+        $obsDepsUrl = "https://github.com/obsproject/obs-deps/releases/download/2025-08-23/windows-deps-2025-08-23-x64.zip"
         Invoke-WebRequest -Uri $obsDepsUrl -OutFile "obs-deps.zip"
         Expand-Archive -Path "obs-deps.zip" -DestinationPath "obs-deps" -Force
 
@@ -463,7 +463,7 @@ jobs:
 
         # Configure OBS (headers and libraries only, minimal build)
         echo "Configuring OBS Studio SDK..."
-        cmake -B build -G Ninja \
+        cmake -B build -G Xcode \
           -DCMAKE_BUILD_TYPE=Release \
           -DENABLE_PLUGINS=OFF \
           -DENABLE_UI=OFF \
@@ -504,16 +504,18 @@ jobs:
           exit 1
         fi
 
-        cmake -B build -G Ninja \
+        cmake -B build -G Xcode \
           -DCMAKE_BUILD_TYPE=Release \
           -DOBS_INCLUDE_SEARCH_PATH="$OBS_INCLUDE" \
           -DOBS_LIB_SEARCH_PATH="$OBS_LIB"
 
         cmake --build build --config Release
 
-        # Verify plugin was built
-        if [ -f "build/obs-webrtc-link.so" ]; then
+        # Verify plugin was built (Xcode puts output in Release subdirectory)
+        if [ -f "build/Release/obs-webrtc-link.so" ]; then
           echo "Plugin built successfully"
+          # Copy to expected location for packaging
+          cp build/Release/obs-webrtc-link.so build/
         else
           echo "Plugin build failed - .so not found"
           find build -name "*.so" -o -name "*.dylib"
