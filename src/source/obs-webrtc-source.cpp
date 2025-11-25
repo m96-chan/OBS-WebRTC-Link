@@ -42,6 +42,10 @@ struct webrtc_source_data {
     VideoCodec video_codec;
     AudioCodec audio_codec;
 
+    // Audio-only mode
+    bool audio_only;
+    std::string audio_quality;  // "Low", "Medium", "High"
+
     uint32_t width;
     uint32_t height;
 };
@@ -72,6 +76,8 @@ static void *webrtc_source_create(obs_data_t *settings, obs_source_t *source)
     data->stream_id = obs_data_get_string(settings, "stream_id");
     data->auth_token = obs_data_get_string(settings, "auth_token");
     data->session_id = obs_data_get_string(settings, "session_id");
+    data->audio_only = obs_data_get_bool(settings, "audio_only");
+    data->audio_quality = obs_data_get_string(settings, "audio_quality");
     const char *codec_str = obs_data_get_string(settings, "video_codec");
 
     if (strcmp(codec_str, "H264") == 0) {
@@ -229,6 +235,8 @@ static void webrtc_source_get_defaults(obs_data_t *settings)
     obs_data_set_default_string(settings, "stream_id", "");
     obs_data_set_default_string(settings, "auth_token", "");
     obs_data_set_default_string(settings, "session_id", "");
+    obs_data_set_default_bool(settings, "audio_only", false);
+    obs_data_set_default_string(settings, "audio_quality", "Medium");
     obs_data_set_default_string(settings, "video_codec", "H264");
     obs_data_set_default_int(settings, "video_bitrate", 2500);
     obs_data_set_default_string(settings, "audio_codec", "opus");
@@ -317,6 +325,22 @@ static bool webrtc_source_connection_mode_changed(obs_properties_t *props, obs_p
     return true;
 }
 
+/**
+ * @brief Audio-only mode changed callback
+ */
+static bool webrtc_source_audio_only_changed(obs_properties_t *props, obs_property_t *property, obs_data_t *settings)
+{
+    bool audio_only = obs_data_get_bool(settings, "audio_only");
+
+    // Show/hide video codec when audio-only is enabled
+    obs_property_set_visible(obs_properties_get(props, "video_codec"), !audio_only);
+
+    // Show/hide audio quality when audio-only is enabled
+    obs_property_set_visible(obs_properties_get(props, "audio_quality"), audio_only);
+
+    return true;
+}
+
 static obs_properties_t *webrtc_source_get_properties(void *data)
 {
     obs_properties_t *props = obs_properties_create();
@@ -357,6 +381,20 @@ static obs_properties_t *webrtc_source_get_properties(void *data)
     obs_properties_add_text(props, "session_id",
                            obs_module_text("Session ID (from host)"),
                            OBS_TEXT_DEFAULT);
+
+    // Audio-only mode
+    obs_property_t *audio_only = obs_properties_add_bool(props, "audio_only",
+                                                          obs_module_text("Audio-only Mode"));
+    obs_property_set_modified_callback(audio_only, webrtc_source_audio_only_changed);
+
+    // Audio Quality (for audio-only mode)
+    obs_property_t *audio_quality = obs_properties_add_list(props, "audio_quality",
+                                                             obs_module_text("Audio Quality"),
+                                                             OBS_COMBO_TYPE_LIST,
+                                                             OBS_COMBO_FORMAT_STRING);
+    obs_property_list_add_string(audio_quality, "Low (32 kbps)", "Low");
+    obs_property_list_add_string(audio_quality, "Medium (48 kbps)", "Medium");
+    obs_property_list_add_string(audio_quality, "High (64 kbps)", "High");
 
     // Video Codec
     obs_property_t *codec = obs_properties_add_list(props, "video_codec",
