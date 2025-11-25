@@ -336,7 +336,7 @@ private:
             // Schedule answer generation asynchronously to avoid potential deadlock
             // if this callback was triggered from within setRemoteDescription
             std::thread([this]() {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
                 std::shared_ptr<rtc::PeerConnection> pc;
                 bool hasRemote = false;
