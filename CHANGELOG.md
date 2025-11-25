@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-11-25
+
+### Added
+- **WebRTC Link Source UI Enhancements**:
+  - Connection mode selection (WHEP/P2P)
+  - Stream ID field for WHEP mode (optional)
+  - Bearer token authentication field (password-protected, optional)
+  - Session ID field for P2P mode
+  - Audio-only mode with quality presets (Low/Medium/High: 32/48/64 kbps)
+  - Dynamic UI that shows/hides relevant fields based on connection mode and audio-only settings
+
+### Changed
+- WebRTC Link Source now supports both WHEP and P2P connection modes
+- Video codec selection is hidden when audio-only mode is enabled
+
+### Note
+- Backend integration for new UI fields is pending (authentication, stream ID, P2P signaling, audio-only configuration)
+
 ## [0.1.2] - 2025-11-25
 
 ### Changed
@@ -71,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiveKit setup guide
 - Docker development environment setup
 
-[Unreleased]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/m96-chan/OBS-WebRTC-Link/releases/tag/v0.1.0
