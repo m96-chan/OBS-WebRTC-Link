@@ -325,10 +325,12 @@ TEST_F(PeerConnectionTest, MultipleIceServers) {
         "stun:stun2.l.google.com:19302"
     };
 
-    EXPECT_NO_THROW({
-        auto pc = std::make_unique<PeerConnection>(config);
-        pc->createOffer();
-    });
+    auto pc = std::make_unique<PeerConnection>(config);
+    EXPECT_NO_THROW({ pc->createOffer(); });
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Invalid SDP format for remote description
