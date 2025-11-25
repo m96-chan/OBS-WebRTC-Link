@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Connection mode selection (WHEP/P2P)
   - Stream ID field for WHEP mode (optional)
   - Bearer token authentication field (password-protected, optional)
+  - Signaling Server URL field for P2P mode (WebSocket URL)
   - Session ID field for P2P mode
   - Audio-only mode with quality presets (Low/Medium/High: 32/48/64 kbps)
   - Dynamic UI that shows/hides relevant fields based on connection mode and audio-only settings
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - WebRTC Link Source now supports both WHEP and P2P connection modes
 - Video codec selection is hidden when audio-only mode is enabled
+- Separate server URL fields for WHEP (HTTP/HTTPS) and P2P (WebSocket) for clarity
 
 ### Note
 - Backend integration for new UI fields is pending (authentication, stream ID, P2P signaling, audio-only configuration)

@@ -35,10 +35,11 @@ struct webrtc_source_data {
 
     // Configuration
     std::string connection_mode;  // "WHEP" or "P2P"
-    std::string server_url;
+    std::string server_url;       // For WHEP mode
     std::string stream_id;
     std::string auth_token;
-    std::string session_id;  // For P2P mode
+    std::string signaling_url;    // For P2P mode (WebSocket URL)
+    std::string session_id;       // For P2P mode
     VideoCodec video_codec;
     AudioCodec audio_codec;
 
@@ -75,6 +76,7 @@ static void *webrtc_source_create(obs_data_t *settings, obs_source_t *source)
     data->server_url = obs_data_get_string(settings, "server_url");
     data->stream_id = obs_data_get_string(settings, "stream_id");
     data->auth_token = obs_data_get_string(settings, "auth_token");
+    data->signaling_url = obs_data_get_string(settings, "signaling_url");
     data->session_id = obs_data_get_string(settings, "session_id");
     data->audio_only = obs_data_get_bool(settings, "audio_only");
     data->audio_quality = obs_data_get_string(settings, "audio_quality");
@@ -234,6 +236,7 @@ static void webrtc_source_get_defaults(obs_data_t *settings)
     obs_data_set_default_string(settings, "server_url", "");
     obs_data_set_default_string(settings, "stream_id", "");
     obs_data_set_default_string(settings, "auth_token", "");
+    obs_data_set_default_string(settings, "signaling_url", "");
     obs_data_set_default_string(settings, "session_id", "");
     obs_data_set_default_bool(settings, "audio_only", false);
     obs_data_set_default_string(settings, "audio_quality", "Medium");
@@ -320,6 +323,7 @@ static bool webrtc_source_connection_mode_changed(obs_properties_t *props, obs_p
     obs_property_set_visible(obs_properties_get(props, "auth_token"), is_whep);
 
     // Show/hide P2P fields
+    obs_property_set_visible(obs_properties_get(props, "signaling_url"), is_p2p);
     obs_property_set_visible(obs_properties_get(props, "session_id"), is_p2p);
 
     return true;
@@ -378,6 +382,10 @@ static obs_properties_t *webrtc_source_get_properties(void *data)
                            OBS_TEXT_PASSWORD);
 
     // P2P Mode settings
+    obs_properties_add_text(props, "signaling_url",
+                           obs_module_text("Signaling Server (WebSocket URL)"),
+                           OBS_TEXT_DEFAULT);
+
     obs_properties_add_text(props, "session_id",
                            obs_module_text("Session ID (from host)"),
                            OBS_TEXT_DEFAULT);
