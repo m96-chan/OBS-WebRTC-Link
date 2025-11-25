@@ -560,9 +560,19 @@ jobs:
 
         # Copy simde headers (SIMD Everywhere - required by OBS 32.0.2)
         echo "Copying simde headers..."
-        if [ -d "deps/simde" ]; then
-          mkdir -p ../obs-studio-build/include/simde
+        mkdir -p ../obs-studio-build/include
+        if [ -d "deps/simde/simde" ]; then
           cp -R deps/simde/simde ../obs-studio-build/include/
+          echo "✓ simde headers copied successfully"
+        else
+          echo "⚠ Warning: deps/simde/simde not found, checking alternate location..."
+          if [ -d "deps/simde" ]; then
+            cp -R deps/simde ../obs-studio-build/include/
+            echo "✓ simde headers copied from deps/simde"
+          else
+            echo "✗ Error: simde headers not found in deps/simde"
+            ls -la deps/ || echo "deps directory not found"
+          fi
         fi
 
         # Copy libraries
