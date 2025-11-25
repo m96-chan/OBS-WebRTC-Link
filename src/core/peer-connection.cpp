@@ -30,6 +30,9 @@ public:
                 rtcConfig.iceServers.emplace_back(server);
             }
 
+            // Enable automatic renegotiation for proper handling of multiple offers
+            rtcConfig.disableAutoNegotiation = false;
+
             // Create PeerConnection
             peerConnection_ = std::make_shared<rtc::PeerConnection>(rtcConfig);
 
@@ -104,12 +107,9 @@ public:
 
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
-            if (isRenegotiation) {
-                // For renegotiation, we need to rollback the previous offer first
-                // then create a new offer that includes the new data channel
-                log(LogLevel::Debug, "Rolling back previous local description for renegotiation");
-                pc->setLocalDescription(rtc::Description::Type::Rollback);
-            }
+            // Both initial and renegotiation use the same approach:
+            // creating a new data channel automatically triggers negotiationNeeded,
+            // and setLocalDescription will generate a new offer including all channels
             pc->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
