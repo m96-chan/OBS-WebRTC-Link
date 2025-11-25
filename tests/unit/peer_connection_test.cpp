@@ -118,6 +118,10 @@ TEST_F(PeerConnectionTest, CreateOfferGeneratesLocalDescription) {
     ASSERT_FALSE(localDescriptions.empty());
     EXPECT_EQ(localDescriptions[0].first, SdpType::Offer);
     EXPECT_FALSE(localDescriptions[0].second.empty());
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Create answer after setting remote offer
@@ -145,6 +149,11 @@ TEST_F(PeerConnectionTest, CreateAnswerAfterRemoteOffer) {
     ASSERT_FALSE(answererState.localDescriptions.empty());
     EXPECT_EQ(answererState.localDescriptions[0].first, SdpType::Answer);
     EXPECT_FALSE(answererState.localDescriptions[0].second.empty());
+
+    // Close connections before destruction
+    offerer->close();
+    answerer->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: ICE candidates are collected
@@ -159,6 +168,10 @@ TEST_F(PeerConnectionTest, IceCandidatesAreCollected) {
 
     // Should have at least one ICE candidate
     EXPECT_FALSE(iceCandidates.empty());
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: State changes are reported
@@ -171,6 +184,10 @@ TEST_F(PeerConnectionTest, StateChangesAreReported) {
 
     // Should have some state changes
     EXPECT_FALSE(stateChanges.empty());
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Close changes state to Closed
@@ -198,6 +215,10 @@ TEST_F(PeerConnectionTest, GetLocalDescriptionAfterOffer) {
     std::string localDesc = pc->getLocalDescription();
     EXPECT_FALSE(localDesc.empty());
     EXPECT_NE(localDesc.find("v=0"), std::string::npos); // SDP should start with v=0
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Set remote description succeeds
@@ -240,7 +261,8 @@ TEST_F(PeerConnectionTest, AddIceCandidateSucceeds) {
                             "0");
     });
 
-    // Wait for cleanup before destroying connection
+    // Close connection before destruction
+    pc->close();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
@@ -261,6 +283,10 @@ TEST_F(PeerConnectionTest, MoveSemantics) {
     auto pc3 = std::make_unique<PeerConnection>(createTestConfig());
     pc3 = std::move(pc2);
     EXPECT_FALSE(pc3->getLocalDescription().empty());
+
+    // Close connection before destruction
+    pc3->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Multiple peer connections can coexist
@@ -300,6 +326,10 @@ TEST_F(PeerConnectionTest, LoggingCallbackIsInvoked) {
 
     // Should have some log messages
     EXPECT_FALSE(logMessages.empty());
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // ========== Edge Cases and Error Handling Tests ==========
@@ -309,11 +339,15 @@ TEST_F(PeerConnectionTest, EmptyIceServersConfiguration) {
     auto config = createTestConfig();
     config.iceServers.clear();
 
+    auto pc = std::make_unique<PeerConnection>(config);
     EXPECT_NO_THROW({
-        auto pc = std::make_unique<PeerConnection>(config);
         pc->createOffer();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     });
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Multiple ICE servers
@@ -364,6 +398,10 @@ TEST_F(PeerConnectionTest, InvalidIceCandidateThrows) {
     EXPECT_THROW({
         pc->addIceCandidate("invalid candidate", "0");
     }, std::runtime_error);
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Empty ICE candidate
@@ -377,6 +415,10 @@ TEST_F(PeerConnectionTest, EmptyIceCandidateThrows) {
     EXPECT_THROW({
         pc->addIceCandidate("", "0");
     }, std::runtime_error);
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Create answer without remote offer throws
@@ -399,6 +441,10 @@ TEST_F(PeerConnectionTest, CreateOfferTwiceIsAllowed) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         pc->createOffer();
     });
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Close can be called multiple times
@@ -467,6 +513,11 @@ TEST_F(PeerConnectionTest, GetRemoteDescriptionAfterSetting) {
     std::string remoteDesc = answerer->getRemoteDescription();
     EXPECT_FALSE(remoteDesc.empty());
     EXPECT_EQ(remoteDesc, offerSdp);
+
+    // Close connections before destruction
+    offerer->close();
+    answerer->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // ========== State Transition Tests ==========
@@ -483,6 +534,10 @@ TEST_F(PeerConnectionTest, StateTransitionsFromNewToChecking) {
 
     // State should have changed
     EXPECT_NE(pc->getState(), ConnectionState::New);
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: State change callback receives all transitions
@@ -504,6 +559,10 @@ TEST_F(PeerConnectionTest, StateChangeCallbackReceivesAllTransitions) {
             stateChanges[0] == ConnectionState::Failed
         );
     }
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: isConnected returns true only when connected or completed
@@ -532,6 +591,10 @@ TEST_F(PeerConnectionTest, IsConnectedOnlyWhenConnectedOrCompleted) {
             state != ConnectionState::Completed
         );
     }
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // ========== Concurrent Operations Tests ==========
@@ -554,6 +617,10 @@ TEST_F(PeerConnectionTest, ConcurrentOfferCreation) {
 
     // Should not crash and should have local description
     EXPECT_FALSE(pc->getLocalDescription().empty());
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Callback safety under concurrent operations
@@ -580,6 +647,10 @@ TEST_F(PeerConnectionTest, CallbackSafetyUnderConcurrency) {
 
     // Should have received at least one callback
     EXPECT_GT(callbackCount.load(), 0);
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // ========== Performance Tests ==========
@@ -629,4 +700,8 @@ TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
     EXPECT_FALSE(offer2.empty());
     EXPECT_NE(offer1.find("v=0"), std::string::npos);
     EXPECT_NE(offer2.find("v=0"), std::string::npos);
+
+    // Close connection before destruction
+    pc1->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
