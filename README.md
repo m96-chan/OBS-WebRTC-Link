@@ -69,7 +69,21 @@ graph LR
 
 ---
 
-## ⚙️ Usage Guide
+## ⚙️ Quick Start
+
+### Adding WebRTC Source to OBS
+
+1. **Add Source**
+   - Click `+` in the Sources panel
+   - Select `WebRTC Link Source`
+   - Name your source (e.g., "Remote Feed")
+
+![Adding WebRTC Link Source](docs/images/screenshots/obs-sources-menu.png)
+*Screenshot will be added in a future release*
+
+2. **Configure Connection Mode**
+
+   Choose between SFU (recommended) or P2P mode based on your use case.
 
 ### Scenario 1: Receiving from LiveKit / SFU (Recommended)
 
@@ -78,6 +92,9 @@ graph LR
 - Mode: `SFU (WHEP)`
 - URL: `https://your-sfu-endpoint/whep`
 - Token: subscriber token
+
+![WHEP Source Settings](docs/images/screenshots/obs-source-settings-whep.png)
+*Screenshot will be added in a future release*
 
 **Sender:**
 - OBS: select WebRTC Output
@@ -96,7 +113,24 @@ graph LR
 - Select `P2P Client`
 - Paste Session ID
 
-**For detailed LiveKit setup instructions, see [LiveKit Setup Guide](docs/LIVEKIT_SETUP.md).**
+![P2P Source Settings](docs/images/screenshots/obs-source-settings-p2p.png)
+*Screenshot will be added in a future release*
+
+---
+
+## 📖 Detailed Usage Examples
+
+For detailed, step-by-step guides covering common use cases:
+
+- **[Usage Examples Guide](docs/USAGE_EXAMPLES.md)** - Comprehensive examples including:
+  - OBS-to-OBS relay via LiveKit
+  - Browser to OBS (guest input)
+  - Direct P2P connections
+  - Mobile device as wireless camera
+  - Audio-only mode for podcasts
+  - Troubleshooting tips
+
+**For LiveKit server setup, see [LiveKit Setup Guide](docs/LIVEKIT_SETUP.md).**
 
 ---
 
