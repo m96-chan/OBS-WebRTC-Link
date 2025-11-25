@@ -20,7 +20,7 @@ class PeerConnection::Impl {
 public:
     explicit Impl(const PeerConnectionConfig& config)
         : config_(config), state_(ConnectionState::New), hasRemoteDescription_(false),
-          remoteDescriptionSdp_(""), pendingCandidates_(), hasLocalDescription_(false) {
+          remoteDescriptionSdp_(""), pendingCandidates_() {
         try {
             // Configure libdatachannel
             rtc::Configuration rtcConfig;
@@ -53,7 +53,6 @@ public:
 
     void createOffer() {
         std::shared_ptr<rtc::PeerConnection> pc;
-        bool isRenegotiation = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
 
@@ -62,15 +61,10 @@ public:
             }
 
             pc = peerConnection_;
-            isRenegotiation = hasLocalDescription_;
         }
 
         try {
-            if (isRenegotiation) {
-                log(LogLevel::Info, "Creating offer (renegotiation)");
-            } else {
-                log(LogLevel::Info, "Creating offer (initial)");
-            }
+            log(LogLevel::Info, "Creating offer");
 
             // Create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
@@ -301,11 +295,6 @@ private:
 
         std::string sdp = std::string(description);
 
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            hasLocalDescription_ = true;
-        }
-
         if (config_.localDescriptionCallback) {
             config_.localDescriptionCallback(type, sdp);
         }
@@ -381,7 +370,6 @@ private:
     std::shared_ptr<rtc::DataChannel> dataChannel_;  // Keep reference to data channel
     ConnectionState state_;
     bool hasRemoteDescription_;
-    bool hasLocalDescription_;  // Track if we've generated a local description (for renegotiation)
     std::string remoteDescriptionSdp_;
     std::vector<std::pair<std::string, std::string>> pendingCandidates_;  // Buffered candidates
     mutable std::mutex mutex_;  // Mutable for const methods
