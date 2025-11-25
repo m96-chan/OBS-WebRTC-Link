@@ -224,23 +224,30 @@ jobs:
       if: steps.cache-obs.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
+        # Download OBS dependencies (obs-deps)
+        Write-Host "Downloading OBS dependencies..."
+        $obsDepsUrl = "https://github.com/obsproject/obs-deps/releases/download/2024-11-09/windows-deps-2024-11-09-x64.zip"
+        Invoke-WebRequest -Uri $obsDepsUrl -OutFile "obs-deps.zip"
+        Expand-Archive -Path "obs-deps.zip" -DestinationPath "obs-deps" -Force
+
         # Clone OBS Studio
         Write-Host "Cloning OBS Studio 30.2.2..."
         git clone --depth 1 --branch 30.2.2 https://github.com/obsproject/obs-studio.git obs-src
         cd obs-src
-        git submodule update --init --recursive
 
-        # Configure OBS (headers and import libraries only, no full build)
+        # Configure OBS with deps
         Write-Host "Configuring OBS Studio SDK..."
+        $depsPath = "${{ github.workspace }}\obs-deps"
         cmake -B build -G "Visual Studio 17 2022" -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_PREFIX_PATH="$depsPath" `
           -DENABLE_PLUGINS=OFF `
           -DENABLE_UI=OFF `
           -DENABLE_SCRIPTING=OFF `
           -DBUILD_TESTS=OFF `
           -DCMAKE_INSTALL_PREFIX="../obs-studio-build"
 
-        # Build just the SDK components we need
+        # Build just libobs
         Write-Host "Building OBS SDK libraries..."
         cmake --build build --config Release --target obs-frontend-api libobs
 
@@ -255,6 +262,7 @@ jobs:
           Write-Host "OBS SDK installed successfully"
         } else {
           Write-Error "OBS SDK installation failed"
+          Get-ChildItem -Path "obs-studio-build" -Recurse | Select-Object FullName
           exit 1
         }
 
@@ -436,26 +444,70 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install cmake ninja pkg-config openssl obs
+        brew install cmake ninja pkg-config openssl
 
-    - name: Get OBS paths
-      id: obs-paths
+    - name: Cache OBS Studio SDK
+      id: cache-obs
+      uses: actions/cache@v4
+      with:
+        path: obs-studio-build
+        key: obs-macos-sdk-30.2.2-${{ runner.os }}-v2
+
+    - name: Build OBS Studio SDK from source
+      if: steps.cache-obs.outputs.cache-hit != 'true'
       run: |
-        OBS_INCLUDE=$(brew --prefix)/include
-        OBS_LIB=$(brew --prefix)/lib
-        echo "include=$OBS_INCLUDE" >> $GITHUB_OUTPUT
-        echo "lib=$OBS_LIB" >> $GITHUB_OUTPUT
-        echo "OBS Include: $OBS_INCLUDE"
-        echo "OBS Lib: $OBS_LIB"
-        ls -la $OBS_INCLUDE/obs || echo "OBS headers not in expected location"
-        ls -la $OBS_LIB/libobs.* || echo "OBS library not in expected location"
+        # Clone OBS Studio
+        echo "Cloning OBS Studio 30.2.2..."
+        git clone --depth 1 --branch 30.2.2 https://github.com/obsproject/obs-studio.git obs-src
+        cd obs-src
+
+        # Configure OBS (headers and libraries only, minimal build)
+        echo "Configuring OBS Studio SDK..."
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DENABLE_PLUGINS=OFF \
+          -DENABLE_UI=OFF \
+          -DENABLE_SCRIPTING=OFF \
+          -DBUILD_TESTS=OFF \
+          -DCMAKE_INSTALL_PREFIX="../obs-studio-build"
+
+        # Build just libobs
+        echo "Building OBS SDK libraries..."
+        cmake --build build --config Release --target libobs obs-frontend-api
+
+        # Install SDK
+        echo "Installing OBS SDK..."
+        cmake --install build --config Release
+
+        cd ..
+
+        # Verify SDK installation
+        if [ -f "obs-studio-build/include/obs.h" ]; then
+          echo "OBS SDK installed successfully"
+        else
+          echo "OBS SDK installation failed"
+          exit 1
+        fi
 
     - name: Build plugin with OBS SDK
       run: |
+        OBS_INCLUDE="${{ github.workspace }}/obs-studio-build/include"
+        OBS_LIB="${{ github.workspace }}/obs-studio-build/lib"
+
+        echo "OBS Include: $OBS_INCLUDE"
+        echo "OBS Lib: $OBS_LIB"
+
+        # Verify paths exist
+        if [ ! -d "$OBS_INCLUDE" ]; then
+          echo "OBS include directory not found: $OBS_INCLUDE"
+          find obs-studio-build -type d
+          exit 1
+        fi
+
         cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
-          -DOBS_INCLUDE_SEARCH_PATH="${{ steps.obs-paths.outputs.include }}" \
-          -DOBS_LIB_SEARCH_PATH="${{ steps.obs-paths.outputs.lib }}"
+          -DOBS_INCLUDE_SEARCH_PATH="$OBS_INCLUDE" \
+          -DOBS_LIB_SEARCH_PATH="$OBS_LIB"
 
         cmake --build build --config Release
 
