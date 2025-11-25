@@ -540,6 +540,7 @@ jobs:
         cp build/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
         cp build/libobs/libobs.*.dylib ../obs-studio-build/lib/ || true
 
+        cp build/frontend/api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
         cp build/UI/obs-frontend-api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
         cp build/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
         cp build/UI/obs-frontend-api/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
