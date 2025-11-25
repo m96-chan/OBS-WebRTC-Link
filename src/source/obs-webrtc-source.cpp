@@ -96,9 +96,28 @@ static void *webrtc_source_create(obs_data_t *settings, obs_source_t *source)
 
     // Create WebRTC source
     WebRTCSourceConfig config;
-    config.serverUrl = data->server_url;
+
+    // Set connection mode
+    if (data->connection_mode == "P2P") {
+        config.connectionMode = ConnectionMode::P2P;
+        config.signalingUrl = data->signaling_url;
+        config.sessionId = data->session_id;
+    } else {
+        config.connectionMode = ConnectionMode::WHEP;
+        config.serverUrl = data->server_url;
+        config.streamId = data->stream_id;
+    }
+
+    // Set authentication token (for both modes)
+    config.authToken = data->auth_token;
+
+    // Set codecs
     config.videoCodec = data->video_codec;
     config.audioCodec = data->audio_codec;
+
+    // Set audio-only mode
+    config.audioOnly = data->audio_only;
+    config.audioQuality = data->audio_quality;
 
     // Set video callback
     config.videoCallback = [data](const VideoFrame& frame) {
