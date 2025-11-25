@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-11-25
+
 ### Added
-- Version management system with VERSION file
-- CHANGELOG.md for tracking version history
-- Version display in plugin metadata
-- Automated version bump script
+- **Windows Installer**: Inno Setup-based installer with auto-detection of OBS installation
+- **Windows Portable Build**: Manual installation ZIP with instructions
+- Full Windows plugin binary build in CI using OBS SDK 30.2.2
+
+### Changed
+- Updated README installation instructions to reflect current release artifacts
+- Windows builds now include pre-compiled DLL (no longer source-only)
+
+### Fixed
+- Windows release pipeline now builds actual plugin binary instead of tests-only
 
 ## [0.1.0] - 2025-11-25
 
@@ -46,5 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiveKit setup guide
 - Docker development environment setup
 
-[Unreleased]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/m96-chan/OBS-WebRTC-Link/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/m96-chan/OBS-WebRTC-Link/releases/tag/v0.1.0
