@@ -62,10 +62,15 @@ graph LR
 
 ---
 
-## 📦 Installation (Windows)
+## 📦 Installation
 
-1. Download the installer or ZIP from Releases.
-2. Install to your OBS plugin directory.
+### Windows, Linux, macOS
+
+**Current Release (v0.1.0):**
+- **Linux**: Download pre-built binary from [Releases](https://github.com/m96-chan/OBS-WebRTC-Link/releases)
+- **Windows/macOS**: Build from source (see [BUILD.md](BUILD.md))
+
+**Note:** Pre-built Windows installer is planned for future releases. For now, please follow the build instructions in [BUILD.md](BUILD.md).
 
 ---
 

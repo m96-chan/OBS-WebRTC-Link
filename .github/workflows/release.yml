@@ -206,17 +206,6 @@ jobs:
     - name: Setup MSVC
       uses: microsoft/setup-msbuild@v2
 
-    - name: Configure CMake (Tests Only - No OBS SDK on Windows CI)
-      run: |
-        cmake -B build `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DBUILD_LIBDATACHANNEL=ON `
-          -DBUILD_TESTS_ONLY=ON
-
-    - name: Build dependencies
-      run: |
-        cmake --build build --config Release --target datachannel-static
-
     - name: Get version
       id: version
       shell: pwsh
@@ -224,42 +213,180 @@ jobs:
         $version = (Get-Content VERSION).Trim()
         echo "version=$version" >> $env:GITHUB_OUTPUT
 
-    - name: Create release info
+    - name: Cache OBS Studio
+      id: cache-obs
+      uses: actions/cache@v4
+      with:
+        path: obs-studio-build
+        key: obs-windows-30.2.2-${{ runner.os }}
+
+    - name: Download and extract OBS Studio portable
+      if: steps.cache-obs.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path release
+        # Download OBS Studio 30.2.2 portable (includes SDK)
+        $url = "https://github.com/obsproject/obs-studio/releases/download/30.2.2/OBS-Studio-30.2.2-Windows.zip"
+        Write-Host "Downloading OBS Studio from $url"
+        Invoke-WebRequest -Uri $url -OutFile "obs-studio.zip"
+
+        # Extract
+        Write-Host "Extracting OBS Studio..."
+        Expand-Archive -Path "obs-studio.zip" -DestinationPath "obs-studio-build" -Force
+
+        # Verify installation
+        if (Test-Path "obs-studio-build/obs-studio/bin/64bit/obs.dll") {
+          Write-Host "OBS Studio extracted successfully"
+        } else {
+          Write-Error "OBS Studio extraction failed - obs.dll not found"
+          exit 1
+        }
+
+    - name: Build plugin with OBS SDK
+      shell: pwsh
+      run: |
+        # Configure CMake with OBS SDK paths
+        cmake -B build -G "Visual Studio 17 2022" -A x64 `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DOBS_INCLUDE_SEARCH_PATH="${env:GITHUB_WORKSPACE}/obs-studio-build/obs-studio/include" `
+          -DOBS_LIB_SEARCH_PATH="${env:GITHUB_WORKSPACE}/obs-studio-build/obs-studio/bin/64bit"
+
+        # Build plugin
+        cmake --build build --config Release
+
+        # Verify plugin was built
+        if (Test-Path "build/Release/obs-webrtc-link.dll") {
+          Write-Host "Plugin built successfully"
+        } else {
+          Write-Error "Plugin build failed - DLL not found"
+          exit 1
+        }
+
+    - name: Install Inno Setup
+      shell: pwsh
+      run: |
+        choco install innosetup -y
+
+    - name: Create installer script
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.version }}"
+
+        # Create Inno Setup script
         @"
-        # OBS WebRTC Link v${{ steps.version.outputs.version }} - Windows
+        #define MyAppName "OBS WebRTC Link"
+        #define MyAppVersion "$version"
+        #define MyAppPublisher "OBS WebRTC Link Contributors"
+        #define MyAppURL "https://github.com/m96-chan/OBS-WebRTC-Link"
 
-        Note: Windows plugin binary requires local build with OBS Studio SDK.
-        Please refer to BUILD.md for instructions on building for Windows.
+        [Setup]
+        AppId={{8F9C4D5E-6B2A-4F3C-9D8E-1A2B3C4D5E6F}
+        AppName={#MyAppName}
+        AppVersion={#MyAppVersion}
+        AppPublisher={#MyAppPublisher}
+        AppPublisherURL={#MyAppURL}
+        AppSupportURL={#MyAppURL}
+        AppUpdatesURL={#MyAppURL}
+        DefaultDirName={autopf}\obs-studio
+        DefaultGroupName={#MyAppName}
+        DisableProgramGroupPage=yes
+        OutputDir=release
+        OutputBaseFilename=obs-webrtc-link-{#MyAppVersion}-windows-installer
+        Compression=lzma
+        SolidCompression=yes
+        WizardStyle=modern
+        ArchitecturesAllowed=x64compatible
+        ArchitecturesInstallIn64BitMode=x64compatible
 
-        This release includes:
-        - Source code
-        - Documentation
-        - Build instructions
+        [Languages]
+        Name: "english"; MessagesFile: "compiler:Default.isl"
 
-        ## Building for Windows
+        [Files]
+        Source: "build\Release\obs-webrtc-link.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
+        Source: "data\locale\*"; DestDir: "{app}\data\obs-plugins\obs-webrtc-link\locale"; Flags: ignoreversion recursesubdirs createallsubdirs
+        Source: "README.md"; DestDir: "{app}\data\obs-plugins\obs-webrtc-link"; Flags: ignoreversion
+        Source: "CHANGELOG.md"; DestDir: "{app}\data\obs-plugins\obs-webrtc-link"; Flags: ignoreversion
 
-        See BUILD.md for detailed instructions on building the plugin for Windows
-        with the OBS Studio SDK.
-        "@ | Out-File -FilePath release/WINDOWS_BUILD_NOTES.txt -Encoding UTF8
+        [Icons]
+        Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
-        Copy-Item VERSION release/
-        Copy-Item README.md release/
-        Copy-Item BUILD.md release/
-        Copy-Item CHANGELOG.md release/
+        [Code]
+        function InitializeSetup(): Boolean;
+        var
+          OBSPath: String;
+        begin
+          Result := True;
+          // Check if OBS Studio is installed
+          if not RegQueryStringValue(HKLM, 'SOFTWARE\OBS Studio', 'InstallPath', OBSPath) then
+          begin
+            if not RegQueryStringValue(HKCU, 'SOFTWARE\OBS Studio', 'InstallPath', OBSPath) then
+            begin
+              if MsgBox('OBS Studio installation not detected. Do you want to continue anyway?', mbConfirmation, MB_YESNO) = IDNO then
+              begin
+                Result := False;
+              end;
+            end;
+          end;
+        end;
+        "@ | Out-File -FilePath "installer.iss" -Encoding UTF8
 
-    - name: Create release package
+    - name: Build installer
       shell: pwsh
       run: |
-        Compress-Archive -Path release/* -DestinationPath "release/obs-webrtc-link-${{ steps.version.outputs.version }}-windows-source.zip"
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer.iss"
 
-    - name: Upload release package
+    - name: Create portable ZIP
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "release/obs-webrtc-link"
+        New-Item -ItemType Directory -Force -Path "release/obs-webrtc-link/obs-plugins/64bit"
+        New-Item -ItemType Directory -Force -Path "release/obs-webrtc-link/data/obs-plugins/obs-webrtc-link"
+
+        # Copy plugin DLL
+        Copy-Item "build/Release/obs-webrtc-link.dll" "release/obs-webrtc-link/obs-plugins/64bit/"
+
+        # Copy data files
+        if (Test-Path "data/locale") {
+          Copy-Item -Recurse "data/locale" "release/obs-webrtc-link/data/obs-plugins/obs-webrtc-link/"
+        }
+
+        # Copy documentation
+        Copy-Item "README.md" "release/obs-webrtc-link/data/obs-plugins/obs-webrtc-link/"
+        Copy-Item "CHANGELOG.md" "release/obs-webrtc-link/data/obs-plugins/obs-webrtc-link/"
+        Copy-Item "BUILD.md" "release/obs-webrtc-link/data/obs-plugins/obs-webrtc-link/"
+
+        # Create installation instructions
+        @"
+        # OBS WebRTC Link v${{ steps.version.outputs.version }} - Windows Portable
+
+        ## Installation Instructions
+
+        1. Close OBS Studio if it's running
+        2. Copy the contents of this folder to your OBS Studio installation directory:
+           - Typically: C:\Program Files\obs-studio\
+        3. The plugin DLL should be in: obs-plugins\64bit\obs-webrtc-link.dll
+        4. Start OBS Studio
+
+        ## Uninstallation
+
+        Delete the following files:
+        - obs-plugins\64bit\obs-webrtc-link.dll
+        - data\obs-plugins\obs-webrtc-link\ (folder)
+
+        ## Support
+
+        For issues and support: https://github.com/m96-chan/OBS-WebRTC-Link/issues
+        "@ | Out-File -FilePath "release/obs-webrtc-link/INSTALL.txt" -Encoding UTF8
+
+        # Create ZIP
+        Compress-Archive -Path "release/obs-webrtc-link/*" -DestinationPath "release/obs-webrtc-link-${{ steps.version.outputs.version }}-windows-portable.zip"
+
+    - name: Upload release packages
       uses: actions/upload-artifact@v4
       with:
         name: obs-webrtc-link-windows
-        path: release/*.zip
+        path: |
+          release/*.exe
+          release/*.zip
         retention-days: 7
 
   build-macos:
