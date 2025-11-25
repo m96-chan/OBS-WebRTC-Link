@@ -126,21 +126,31 @@ public:
     }
 
     void createAnswer() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_ptr<rtc::PeerConnection> pc;
 
-        if (!peerConnection_) {
-            return;  // NoOp if closed
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+
+            if (!peerConnection_) {
+                return;  // NoOp if closed
+            }
+
+            if (!hasRemoteDescription_) {
+                throw std::runtime_error("Cannot create answer without remote offer");
+            }
+
+            pc = peerConnection_;
         }
 
-        if (!hasRemoteDescription_) {
-            throw std::runtime_error("Cannot create answer without remote offer");
+        try {
+            // In manual negotiation mode, explicitly generate the answer
+            log(LogLevel::Info, "Creating answer");
+            pc->setLocalDescription(rtc::Description::Type::Answer);
+            log(LogLevel::Debug, "Answer creation initiated");
+        } catch (const std::exception& e) {
+            log(LogLevel::Error, std::string("Failed to create answer: ") + e.what());
+            throw std::runtime_error(std::string("Failed to create answer: ") + e.what());
         }
-
-        // For libdatachannel, the answer is automatically generated when setRemoteDescription
-        // is called with an offer AND the onDataChannel callback is set.
-        // This method exists for API compatibility, but the actual answer generation
-        // happens in setRemoteDescription().
-        log(LogLevel::Info, "Answer will be generated automatically by libdatachannel");
     }
 
     void setRemoteDescription(SdpType type, const std::string& sdp) {
@@ -322,41 +332,22 @@ private:
         peerConnection_->onDataChannel([this](std::shared_ptr<rtc::DataChannel> dc) {
             // Accept the data channel from the remote peer
             // Keep a reference to prevent it from being destroyed
-            // IMPORTANT: This callback is called from libdatachannel's thread,
-            // possibly from within setRemoteDescription() which holds the mutex.
-            // We must be very careful with locking to avoid deadlocks.
-
-            // First, store the data channel without generating answer yet
-            // (setRemoteDescription may still be in progress)
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
+            // IMPORTANT: This callback may be called synchronously from within
+            // setRemoteDescription() which already holds the mutex. Using try_lock
+            // to avoid deadlock - if we can't lock, schedule for later.
+            std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+            if (lock.owns_lock()) {
                 dataChannel_ = dc;
+                log(LogLevel::Debug, "Data channel received from remote peer");
+            } else {
+                // Mutex is locked (probably from setRemoteDescription), schedule asynchronously
+                std::thread([this, dc]() {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    std::lock_guard<std::mutex> deferred_lock(mutex_);
+                    dataChannel_ = dc;
+                    log(LogLevel::Debug, "Data channel received from remote peer (deferred)");
+                }).detach();
             }
-
-            // Schedule answer generation asynchronously to avoid potential deadlock
-            // if this callback was triggered from within setRemoteDescription
-            std::thread([this]() {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-                std::shared_ptr<rtc::PeerConnection> pc;
-                bool hasRemote = false;
-                {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    pc = peerConnection_;
-                    hasRemote = hasRemoteDescription_;
-                }
-
-                // In manual negotiation mode, we need to explicitly generate the answer
-                // when a data channel is received from the remote peer
-                if (pc && hasRemote) {
-                    try {
-                        log(LogLevel::Debug, "Generating answer in response to remote data channel");
-                        pc->setLocalDescription(rtc::Description::Type::Answer);
-                    } catch (const std::exception& e) {
-                        log(LogLevel::Error, std::string("Failed to generate answer: ") + e.what());
-                    }
-                }
-            }).detach();
         });
     }
 
