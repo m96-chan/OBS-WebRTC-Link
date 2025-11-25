@@ -283,8 +283,16 @@ jobs:
 
         # Copy build-generated config headers
         Write-Host "Copying build-generated headers..."
+
+        # Debug: Find all generated header files in build directory
+        Write-Host "Searching for obsconfig.h in build directory..."
+        Get-ChildItem -Path "build" -Recurse -Filter "obsconfig.h" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+
+        # Try multiple possible locations for build-generated headers
         Copy-Item -Path "build/config/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
         Copy-Item -Path "build/libobs/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "build/libobs/Release/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "build/*.h" -Destination "../obs-studio-build/include/" -Force -ErrorAction SilentlyContinue
 
         # Copy libraries
         Write-Host "Copying libraries..."
@@ -548,8 +556,15 @@ jobs:
 
         # Copy build-generated config headers
         echo "Copying build-generated headers..."
+
+        # Debug: Find obsconfig.h
+        echo "Searching for obsconfig.h in build directory..."
+        find build -name "obsconfig.h" 2>/dev/null || echo "obsconfig.h not found"
+
+        # Try multiple possible locations
         find build/config -name "*.h" -exec cp "{}" ../obs-studio-build/include/ \; 2>/dev/null || true
         find build/libobs -name "*.h" -exec cp "{}" ../obs-studio-build/include/ \; 2>/dev/null || true
+        find build -maxdepth 1 -name "*.h" -exec cp "{}" ../obs-studio-build/include/ \; 2>/dev/null || true
 
         # Copy libraries (try multiple possible locations)
         cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
