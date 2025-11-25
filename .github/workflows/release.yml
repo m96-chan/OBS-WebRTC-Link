@@ -558,6 +558,13 @@ jobs:
         # So we need to copy obsconfig.h to the same libobs directory
         cp build/config/obsconfig.h ../obs-studio-build/include/libobs/ 2>/dev/null || true
 
+        # Copy simde headers (SIMD Everywhere - required by OBS 32.0.2)
+        echo "Copying simde headers..."
+        if [ -d "deps/simde" ]; then
+          mkdir -p ../obs-studio-build/include/simde
+          cp -R deps/simde/simde ../obs-studio-build/include/
+        fi
+
         # Copy libraries
         # macOS Xcode builds libobs as a framework
         echo "Copying libobs framework..."
