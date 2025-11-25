@@ -72,19 +72,22 @@ public:
                 log(LogLevel::Info, "Creating offer (initial)");
             }
 
-            // For initial offer, create a data channel to trigger negotiation
+            // Create a data channel to trigger negotiation
             // libdatachannel requires creating a data channel or media track to initiate SDP generation
-            // Note: We release the mutex before creating the data channel to avoid deadlock
+            // We must keep a reference to the data channel, otherwise it will be destroyed immediately
+            // Use a unique label for each offer to ensure renegotiation works
+            // Note: We release the mutex before creating the data channel to avoid potential deadlocks
             // if libdatachannel calls our callbacks synchronously
-            if (!isRenegotiation) {
-                auto dc = pc->createDataChannel("negotiation");
+            static int offerCount = 0;
+            auto dc = pc->createDataChannel("negotiation-" + std::to_string(++offerCount));
+
+            {
                 std::lock_guard<std::mutex> lock(mutex_);
-                dataChannel_ = dc;  // Keep reference to prevent destruction
+                dataChannel_ = dc;
             }
 
             // Trigger local description generation
             // This will invoke the onLocalDescription callback
-            // Always use Type::Offer for both initial and renegotiation
             pc->setLocalDescription(rtc::Description::Type::Offer);
 
             log(LogLevel::Debug, "Offer creation initiated");
