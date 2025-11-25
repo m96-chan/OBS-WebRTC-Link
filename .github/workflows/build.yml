@@ -384,7 +384,11 @@ jobs:
         path: build
 
     - name: Run all unit tests
+      shell: pwsh
       run: |
+        # Set error action to continue on errors
+        $ErrorActionPreference = "Continue"
+
         # Find the actual location of test binaries
         $testDir = Get-ChildItem -Path build -Recurse -Filter "*_test.exe" | Select-Object -First 1 | Select-Object -ExpandProperty Directory
         if (-not $testDir) {
@@ -405,11 +409,13 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             Write-Host "✓ $($_.Name) passed"
           } else {
-            Write-Host "✗ $($_.Name) failed"
+            Write-Host "✗ $($_.Name) failed with exit code $LASTEXITCODE"
             $EXIT_CODE = 1
           }
           Write-Host ""
         }
+
+        Write-Host "All tests completed. Final EXIT_CODE: $EXIT_CODE"
         exit $EXIT_CODE
 
     - name: Upload test results
