@@ -44,19 +44,23 @@ protected:
         PeerConnectionConfig config;
         config.iceServers = {"stun:stun.l.google.com:19302"};
 
-        config.logCallback = [this](LogLevel level, const std::string& message) {
-            logMessages.push_back(message);
+        // Use no-op callbacks to avoid race conditions with shared vectors across tests
+        // Tests that need to inspect callbacks should use createTestConfigWithState()
+        config.logCallback = [](LogLevel level, const std::string& message) {
+            // No-op: safe from race conditions
         };
 
-        config.stateCallback = [this](ConnectionState state) { stateChanges.push_back(state); };
-
-        config.iceCandidateCallback = [this](const std::string& candidate,
-                                             const std::string& mid) {
-            iceCandidates.push_back({candidate, mid});
+        config.stateCallback = [](ConnectionState state) {
+            // No-op: safe from race conditions
         };
 
-        config.localDescriptionCallback = [this](SdpType type, const std::string& sdp) {
-            localDescriptions.push_back({type, sdp});
+        config.iceCandidateCallback = [](const std::string& candidate,
+                                         const std::string& mid) {
+            // No-op: safe from race conditions
+        };
+
+        config.localDescriptionCallback = [](SdpType type, const std::string& sdp) {
+            // No-op: safe from race conditions
         };
 
         return config;
@@ -107,7 +111,8 @@ TEST_F(PeerConnectionTest, InitialStateIsNew) {
 
 // Test: Create offer generates local description
 TEST_F(PeerConnectionTest, CreateOfferGeneratesLocalDescription) {
-    auto config = createTestConfig();
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
     auto pc = std::make_unique<PeerConnection>(config);
 
     pc->createOffer();
@@ -115,9 +120,9 @@ TEST_F(PeerConnectionTest, CreateOfferGeneratesLocalDescription) {
     // Wait a bit for async operations
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    ASSERT_FALSE(localDescriptions.empty());
-    EXPECT_EQ(localDescriptions[0].first, SdpType::Offer);
-    EXPECT_FALSE(localDescriptions[0].second.empty());
+    ASSERT_FALSE(state.localDescriptions.empty());
+    EXPECT_EQ(state.localDescriptions[0].first, SdpType::Offer);
+    EXPECT_FALSE(state.localDescriptions[0].second.empty());
 
     // Close connection before destruction
     pc->close();
@@ -158,7 +163,8 @@ TEST_F(PeerConnectionTest, CreateAnswerAfterRemoteOffer) {
 
 // Test: ICE candidates are collected
 TEST_F(PeerConnectionTest, IceCandidatesAreCollected) {
-    auto config = createTestConfig();
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
     auto pc = std::make_unique<PeerConnection>(config);
 
     pc->createOffer();
@@ -167,7 +173,7 @@ TEST_F(PeerConnectionTest, IceCandidatesAreCollected) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // Should have at least one ICE candidate
-    EXPECT_FALSE(iceCandidates.empty());
+    EXPECT_FALSE(state.iceCandidates.empty());
 
     // Close connection before destruction
     pc->close();
@@ -176,14 +182,15 @@ TEST_F(PeerConnectionTest, IceCandidatesAreCollected) {
 
 // Test: State changes are reported
 TEST_F(PeerConnectionTest, StateChangesAreReported) {
-    auto config = createTestConfig();
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
     auto pc = std::make_unique<PeerConnection>(config);
 
     pc->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Should have some state changes
-    EXPECT_FALSE(stateChanges.empty());
+    EXPECT_FALSE(state.stateChanges.empty());
 
     // Close connection before destruction
     pc->close();
@@ -318,14 +325,16 @@ TEST_F(PeerConnectionTest, MultiplePeerConnectionsCoexist) {
 
 // Test: Logging callback is invoked
 TEST_F(PeerConnectionTest, LoggingCallbackIsInvoked) {
-    auto config = createTestConfig();
+    // Use independent state to avoid shared vector access across tests
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
     auto pc = std::make_unique<PeerConnection>(config);
 
     pc->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Should have some log messages
-    EXPECT_FALSE(logMessages.empty());
+    EXPECT_FALSE(state.logMessages.empty());
 
     // Close connection before destruction
     pc->close();
@@ -542,21 +551,22 @@ TEST_F(PeerConnectionTest, StateTransitionsFromNewToChecking) {
 
 // Test: State change callback receives all transitions
 TEST_F(PeerConnectionTest, StateChangeCallbackReceivesAllTransitions) {
-    auto config = createTestConfig();
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
     auto pc = std::make_unique<PeerConnection>(config);
 
     pc->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     // Should have at least one state change
-    EXPECT_GE(stateChanges.size(), 1);
+    EXPECT_GE(state.stateChanges.size(), 1);
 
     // First state should not be New (already transitioned)
-    if (!stateChanges.empty()) {
+    if (!state.stateChanges.empty()) {
         EXPECT_TRUE(
-            stateChanges[0] == ConnectionState::Checking ||
-            stateChanges[0] == ConnectionState::Connected ||
-            stateChanges[0] == ConnectionState::Failed
+            state.stateChanges[0] == ConnectionState::Checking ||
+            state.stateChanges[0] == ConnectionState::Connected ||
+            state.stateChanges[0] == ConnectionState::Failed
         );
     }
 
@@ -657,7 +667,8 @@ TEST_F(PeerConnectionTest, CallbackSafetyUnderConcurrency) {
 
 // Test: Offer creation completes quickly (< 1 second)
 TEST_F(PeerConnectionTest, OfferCreationPerformance) {
-    auto config = createTestConfig();
+    CallbackState state;
+    auto config = createTestConfigWithState(state);
     auto pc = std::make_unique<PeerConnection>(config);
 
     auto start = std::chrono::steady_clock::now();
@@ -670,7 +681,7 @@ TEST_F(PeerConnectionTest, OfferCreationPerformance) {
 
     // Should complete within 1 second
     EXPECT_LT(duration.count(), 1000);
-    EXPECT_FALSE(localDescriptions.empty());
+    EXPECT_FALSE(state.localDescriptions.empty());
 
     // Close connection before destruction
     pc->close();
@@ -679,21 +690,22 @@ TEST_F(PeerConnectionTest, OfferCreationPerformance) {
 
 // Test: Multiple offer-answer exchanges
 TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
-    auto config1 = createTestConfig();
+    CallbackState state;
+    auto config1 = createTestConfigWithState(state);
     auto pc1 = std::make_unique<PeerConnection>(config1);
 
     // First offer
     pc1->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(localDescriptions.empty());
-    std::string offer1 = localDescriptions[0].second;
-    localDescriptions.clear();
+    ASSERT_FALSE(state.localDescriptions.empty());
+    std::string offer1 = state.localDescriptions[0].second;
+    state.localDescriptions.clear();
 
     // Second offer
     pc1->createOffer();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    ASSERT_FALSE(localDescriptions.empty());
-    std::string offer2 = localDescriptions[0].second;
+    ASSERT_FALSE(state.localDescriptions.empty());
+    std::string offer2 = state.localDescriptions[0].second;
 
     // Both offers should be valid
     EXPECT_FALSE(offer1.empty());
