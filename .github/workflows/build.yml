@@ -327,7 +327,10 @@ jobs:
         path: build
 
     - name: Run all unit tests
+      shell: bash
       run: |
+        set +e  # Disable errexit to handle test failures gracefully
+
         # Find test binaries
         TEST_DIR=$(find build -type f -name "*_test" | head -1 | xargs dirname)
         if [ -z "$TEST_DIR" ]; then
@@ -336,22 +339,27 @@ jobs:
         fi
 
         echo "Found test binaries in: $TEST_DIR"
-        chmod +x $TEST_DIR/*_test
+        chmod +x $TEST_DIR/*_test 2>/dev/null || true
         cd $TEST_DIR
 
         EXIT_CODE=0
         for test in *_test; do
+          [ -f "$test" ] || continue  # Skip if no test files found
+
           echo "========================================"
           echo "Running $test..."
           echo "========================================"
           if ./$test --gtest_output=xml:${test}_results.xml; then
             echo "✓ $test passed"
           else
-            echo "✗ $test failed"
+            TEST_EXIT=$?
+            echo "✗ $test failed with exit code $TEST_EXIT"
             EXIT_CODE=1
           fi
           echo ""
         done
+
+        echo "All tests completed. Final EXIT_CODE: $EXIT_CODE"
         exit $EXIT_CODE
 
     - name: Upload test results
@@ -426,7 +434,10 @@ jobs:
         path: build
 
     - name: Run all unit tests
+      shell: bash
       run: |
+        set +e  # Disable errexit to handle test failures gracefully
+
         # Find test binaries
         TEST_DIR=$(find build -type f -name "*_test" | head -1 | xargs dirname)
         if [ -z "$TEST_DIR" ]; then
@@ -435,22 +446,27 @@ jobs:
         fi
 
         echo "Found test binaries in: $TEST_DIR"
-        chmod +x $TEST_DIR/*_test
+        chmod +x $TEST_DIR/*_test 2>/dev/null || true
         cd $TEST_DIR
 
         EXIT_CODE=0
         for test in *_test; do
+          [ -f "$test" ] || continue  # Skip if no test files found
+
           echo "========================================"
           echo "Running $test..."
           echo "========================================"
           if ./$test --gtest_output=xml:${test}_results.xml; then
             echo "✓ $test passed"
           else
-            echo "✗ $test failed"
+            TEST_EXIT=$?
+            echo "✗ $test failed with exit code $TEST_EXIT"
             EXIT_CODE=1
           fi
           echo ""
         done
+
+        echo "All tests completed. Final EXIT_CODE: $EXIT_CODE"
         exit $EXIT_CODE
 
     - name: Upload test results
