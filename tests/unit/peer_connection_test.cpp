@@ -598,6 +598,10 @@ TEST_F(PeerConnectionTest, OfferCreationPerformance) {
     // Should complete within 1 second
     EXPECT_LT(duration.count(), 1000);
     EXPECT_FALSE(localDescriptions.empty());
+
+    // Close connection before destruction
+    pc->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // Test: Multiple offer-answer exchanges
