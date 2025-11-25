@@ -12,14 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Windows Installer**: Inno Setup-based installer with auto-detection of OBS installation
 - **Windows Portable Build**: Manual installation ZIP with instructions
+- **macOS Unsigned Binary**: Plugin bundle with manual installation instructions
 - Full Windows plugin binary build in CI using OBS SDK 30.2.2
+- Full macOS plugin binary build in CI using Homebrew OBS
 
 ### Changed
 - Updated README installation instructions to reflect current release artifacts
 - Windows builds now include pre-compiled DLL (no longer source-only)
+- macOS builds now include pre-compiled plugin bundle (unsigned)
 
 ### Fixed
 - Windows release pipeline now builds actual plugin binary instead of tests-only
+- macOS release pipeline now builds actual plugin binary instead of tests-only
+
+### Known Issues
+- macOS plugin is unsigned and requires manual Gatekeeper override
+- Windows may require "Run as Administrator" for installer depending on OBS install location
 
 ## [0.1.0] - 2025-11-25
 

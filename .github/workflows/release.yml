@@ -233,22 +233,49 @@ jobs:
         Write-Host "Extracting OBS Studio..."
         Expand-Archive -Path "obs-studio.zip" -DestinationPath "obs-studio-build" -Force
 
-        # Verify installation
-        if (Test-Path "obs-studio-build/obs-studio/bin/64bit/obs.dll") {
+        # Debug: List extracted contents
+        Write-Host "Listing extracted contents:"
+        Get-ChildItem -Path "obs-studio-build" -Recurse -Depth 2 | Select-Object FullName
+
+        # Find obs.dll
+        $obsDll = Get-ChildItem -Path "obs-studio-build" -Recurse -Filter "obs.dll" | Select-Object -First 1
+        if ($obsDll) {
+          Write-Host "Found obs.dll at: $($obsDll.FullName)"
           Write-Host "OBS Studio extracted successfully"
         } else {
           Write-Error "OBS Studio extraction failed - obs.dll not found"
+          Get-ChildItem -Path "obs-studio-build" -Recurse | Select-Object FullName
           exit 1
         }
 
     - name: Build plugin with OBS SDK
       shell: pwsh
       run: |
+        # Find OBS installation paths
+        $obsRoot = (Get-ChildItem -Path "obs-studio-build" -Filter "bin" -Recurse -Directory | Select-Object -First 1).Parent.FullName
+        Write-Host "OBS Root: $obsRoot"
+
+        $obsInclude = Join-Path $obsRoot "include"
+        $obsLib = Join-Path $obsRoot "bin\64bit"
+
+        Write-Host "OBS Include: $obsInclude"
+        Write-Host "OBS Lib: $obsLib"
+
+        # Verify paths exist
+        if (-not (Test-Path $obsInclude)) {
+          Write-Error "OBS include directory not found: $obsInclude"
+          exit 1
+        }
+        if (-not (Test-Path $obsLib)) {
+          Write-Error "OBS lib directory not found: $obsLib"
+          exit 1
+        }
+
         # Configure CMake with OBS SDK paths
         cmake -B build -G "Visual Studio 17 2022" -A x64 `
           -DCMAKE_BUILD_TYPE=Release `
-          -DOBS_INCLUDE_SEARCH_PATH="${env:GITHUB_WORKSPACE}/obs-studio-build/obs-studio/include" `
-          -DOBS_LIB_SEARCH_PATH="${env:GITHUB_WORKSPACE}/obs-studio-build/obs-studio/bin/64bit"
+          -DOBS_INCLUDE_SEARCH_PATH="$obsInclude" `
+          -DOBS_LIB_SEARCH_PATH="$obsLib"
 
         # Build plugin
         cmake --build build --config Release
@@ -399,55 +426,133 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install dependencies
-      run: |
-        brew install cmake ninja pkg-config openssl
-
-    - name: Configure CMake (Tests Only - No OBS SDK on macOS CI)
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_LIBDATACHANNEL=ON \
-          -DBUILD_TESTS_ONLY=ON
-
-    - name: Build dependencies
-      run: |
-        cd build
-        ninja datachannel-static || echo "datachannel-static not needed"
-
     - name: Get version
       id: version
       run: echo "version=$(cat VERSION | tr -d '\n')" >> $GITHUB_OUTPUT
 
-    - name: Create release info
+    - name: Install dependencies
       run: |
-        mkdir -p release
-        cat > release/MACOS_BUILD_NOTES.txt << 'EOF'
-        # OBS WebRTC Link v${{ steps.version.outputs.version }} - macOS
+        brew install cmake ninja pkg-config openssl obs-studio
 
-        Note: macOS plugin binary requires local build with OBS Studio SDK.
-        Please refer to BUILD.md for instructions on building for macOS.
+    - name: Get OBS paths
+      id: obs-paths
+      run: |
+        OBS_INCLUDE=$(brew --prefix)/include
+        OBS_LIB=$(brew --prefix)/lib
+        echo "include=$OBS_INCLUDE" >> $GITHUB_OUTPUT
+        echo "lib=$OBS_LIB" >> $GITHUB_OUTPUT
+        echo "OBS Include: $OBS_INCLUDE"
+        echo "OBS Lib: $OBS_LIB"
+        ls -la $OBS_INCLUDE/obs || echo "OBS headers not in expected location"
+        ls -la $OBS_LIB/libobs.* || echo "OBS library not in expected location"
 
-        This release includes:
-        - Source code
-        - Documentation
-        - Build instructions
+    - name: Build plugin with OBS SDK
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DOBS_INCLUDE_SEARCH_PATH="${{ steps.obs-paths.outputs.include }}" \
+          -DOBS_LIB_SEARCH_PATH="${{ steps.obs-paths.outputs.lib }}"
 
-        ## Building for macOS
+        cmake --build build --config Release
 
-        See BUILD.md for detailed instructions on building the plugin for macOS
-        with the OBS Studio SDK.
+        # Verify plugin was built
+        if [ -f "build/obs-webrtc-link.so" ]; then
+          echo "Plugin built successfully"
+        else
+          echo "Plugin build failed - .so not found"
+          find build -name "*.so" -o -name "*.dylib"
+          exit 1
+        fi
+
+    - name: Create portable package
+      run: |
+        mkdir -p release/obs-webrtc-link.plugin/Contents/MacOS
+        mkdir -p release/obs-webrtc-link.plugin/Contents/Resources
+
+        # Copy plugin binary
+        cp build/obs-webrtc-link.so release/obs-webrtc-link.plugin/Contents/MacOS/
+
+        # Copy data files if they exist
+        if [ -d "data/locale" ]; then
+          cp -r data/locale release/obs-webrtc-link.plugin/Contents/Resources/
+        fi
+
+        # Create Info.plist
+        cat > release/obs-webrtc-link.plugin/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleDevelopmentRegion</key>
+          <string>English</string>
+          <key>CFBundleExecutable</key>
+          <string>obs-webrtc-link.so</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.github.m96-chan.obs-webrtc-link</string>
+          <key>CFBundleInfoDictionaryVersion</key>
+          <string>6.0</string>
+          <key>CFBundleName</key>
+          <string>OBS WebRTC Link</string>
+          <key>CFBundleShortVersionString</key>
+          <string>${{ steps.version.outputs.version }}</string>
+          <key>CFBundleVersion</key>
+          <string>${{ steps.version.outputs.version }}</string>
+        </dict>
+        </plist>
         EOF
 
-        cp VERSION release/
-        cp README.md release/
-        cp BUILD.md release/
-        cp CHANGELOG.md release/
+        # Create installation instructions
+        cat > release/INSTALL-MACOS.txt << 'EOF'
+        # OBS WebRTC Link v${{ steps.version.outputs.version }} - macOS Installation
 
-    - name: Create release package
-      run: |
+        ## Installation Instructions
+
+        **IMPORTANT: This plugin is unsigned. You will need to manually allow it.**
+
+        1. Close OBS Studio if it's running
+        2. Copy the obs-webrtc-link.plugin folder to:
+           ~/Library/Application Support/obs-studio/plugins/
+
+        3. First time running:
+           - Open OBS Studio
+           - macOS will block the plugin
+           - Go to System Settings → Privacy & Security
+           - Click "Allow Anyway" next to the blocked plugin message
+           - Restart OBS Studio
+
+        ## Alternative: Remove quarantine attribute
+
+        If you trust this plugin, you can remove the quarantine attribute:
+
+        ```bash
+        cd ~/Library/Application\ Support/obs-studio/plugins/
+        xattr -dr com.apple.quarantine obs-webrtc-link.plugin
+        ```
+
+        ## Uninstallation
+
+        Delete the plugin folder:
+        ```bash
+        rm -rf ~/Library/Application\ Support/obs-studio/plugins/obs-webrtc-link.plugin
+        ```
+
+        ## Support
+
+        For issues: https://github.com/m96-chan/OBS-WebRTC-Link/issues
+        EOF
+
+        cp README.md release/
+        cp CHANGELOG.md release/
+        cp BUILD.md release/
+
+        # Create ZIP
         cd release
-        zip -r obs-webrtc-link-${{ steps.version.outputs.version }}-macos-source.zip *
+        zip -r obs-webrtc-link-${{ steps.version.outputs.version }}-macos-unsigned.zip \
+          obs-webrtc-link.plugin \
+          INSTALL-MACOS.txt \
+          README.md \
+          CHANGELOG.md \
+          BUILD.md
 
     - name: Upload release package
       uses: actions/upload-artifact@v4
