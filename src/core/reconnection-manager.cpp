@@ -33,32 +33,42 @@ public:
 
     bool scheduleReconnect()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        // Check if max retries reached and cancel any pending reconnection
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
 
-        // Check if max retries reached
-        if (retryCount_ >= config_.maxRetries) {
-            return false;
+            // Check if max retries reached
+            if (retryCount_ >= config_.maxRetries) {
+                return false;
+            }
+
+            // Set cancellation flag for any pending reconnection
+            cancelled_ = true;
         }
 
-        // Cancel any pending reconnection
-        cancelled_ = true;
+        // Join thread outside of mutex to avoid deadlock
         if (reconnectThread_.joinable()) {
             reconnectThread_.join();
         }
 
-        // Calculate delay using exponential backoff
-        int64_t delay = calculateDelay();
+        int64_t delay;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
 
-        // Increment retry count
-        retryCount_++;
+            // Calculate delay using exponential backoff
+            delay = calculateDelay();
 
-        // Update state
-        reconnecting_ = true;
-        cancelled_ = false;
+            // Increment retry count
+            retryCount_++;
 
-        // Notify state change
-        if (config_.stateCallback) {
-            config_.stateCallback(true, retryCount_);
+            // Update state
+            reconnecting_ = true;
+            cancelled_ = false;
+
+            // Notify state change
+            if (config_.stateCallback) {
+                config_.stateCallback(true, retryCount_);
+            }
         }
 
         // Schedule reconnection on a new thread
@@ -91,11 +101,14 @@ public:
 
     void cancel()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        // Set cancellation flags first
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            cancelled_ = true;
+            reconnecting_ = false;
+        }
 
-        cancelled_ = true;
-        reconnecting_ = false;
-
+        // Join thread outside of mutex to avoid deadlock
         if (reconnectThread_.joinable()) {
             reconnectThread_.join();
         }

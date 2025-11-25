@@ -160,6 +160,12 @@ TEST_F(ReconnectionManagerTest, RespectsMaxRetries) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    // Wait for any pending reconnection attempts to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // Cancel to ensure clean shutdown
+    manager.cancel();
+
     // Should not exceed max retries
     EXPECT_LE(reconnectCount, 3);
 }
@@ -251,6 +257,12 @@ TEST_F(ReconnectionManagerTest, CapsDelayAtMaxDelay) {
         manager.scheduleReconnect();
         std::this_thread::sleep_for(std::chrono::milliseconds(150));
     }
+
+    // Wait for any pending reconnection attempts to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+    // Cancel to ensure clean shutdown
+    manager.cancel();
 
     // Delay should be capped at maxDelayMs
     int64_t nextDelay = manager.getNextDelay();
