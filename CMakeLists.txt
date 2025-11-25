@@ -100,6 +100,11 @@ if(BUILD_LIBDATACHANNEL)
         set(NO_TESTS ON CACHE BOOL "" FORCE)
         set(NO_WEBSOCKET ON CACHE BOOL "" FORCE)
 
+        # Fix libsrtp compiler warnings on macOS
+        if(APPLE)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=shorten-64-to-32")
+        endif()
+
         add_subdirectory(deps/libdatachannel EXCLUDE_FROM_ALL)
 
         set(LibDataChannel_FOUND TRUE)
