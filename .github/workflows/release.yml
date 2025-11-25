@@ -500,9 +500,9 @@ jobs:
     - name: Build OBS Studio SDK from source
       if: steps.cache-obs.outputs.cache-hit != 'true'
       run: |
-        # Clone OBS Studio
-        echo "Cloning OBS Studio 32.0.2..."
-        git clone --depth 1 --branch 32.0.2 https://github.com/obsproject/obs-studio.git obs-src
+        # Clone OBS Studio with submodules (needed for simde headers)
+        echo "Cloning OBS Studio 32.0.2 with submodules..."
+        git clone --depth 1 --branch 32.0.2 --recurse-submodules --shallow-submodules https://github.com/obsproject/obs-studio.git obs-src
         cd obs-src
 
         # Remove libobs-metal (requires Swift compiler not available in CI)
