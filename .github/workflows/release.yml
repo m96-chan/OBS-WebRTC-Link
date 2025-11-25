@@ -239,11 +239,13 @@ jobs:
         Write-Host "Removing platform-specific graphics libraries..."
         Remove-Item -Recurse -Force libobs-d3d11 -ErrorAction SilentlyContinue
         Remove-Item -Recurse -Force libobs-winrt -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force libobs-opengl -ErrorAction SilentlyContinue
 
         # Patch CMakeLists.txt to comment out add_subdirectory calls for removed directories
         Write-Host "Patching CMakeLists.txt..."
         (Get-Content CMakeLists.txt) -replace 'add_subdirectory\(libobs-d3d11\)', '# add_subdirectory(libobs-d3d11) # Removed for minimal SDK build' | Set-Content CMakeLists.txt
         (Get-Content CMakeLists.txt) -replace 'add_subdirectory\(libobs-winrt\)', '# add_subdirectory(libobs-winrt) # Removed for minimal SDK build' | Set-Content CMakeLists.txt
+        (Get-Content CMakeLists.txt) -replace 'add_subdirectory\(libobs-opengl\)', '# add_subdirectory(libobs-opengl) # Removed for minimal SDK build' | Set-Content CMakeLists.txt
 
         # Configure OBS with deps
         Write-Host "Configuring OBS Studio SDK..."
@@ -475,10 +477,13 @@ jobs:
         # Remove libobs-metal (requires Swift compiler not available in CI)
         echo "Removing libobs-metal directory to avoid Swift dependency..."
         rm -rf libobs-metal
+        rm -rf libobs-opengl
 
         # Patch CMakeLists.txt to comment out add_subdirectory call for removed directory
         echo "Patching CMakeLists.txt..."
         sed -i.bak 's/add_subdirectory(libobs-metal)/# add_subdirectory(libobs-metal) # Removed for minimal SDK build/' CMakeLists.txt
+        sed -i.bak 's/add_subdirectory(libobs-opengl)/# add_subdirectory(libobs-opengl) # Removed for minimal SDK build/' CMakeLists.txt
+        sed -i.bak 's/add_subdirectory(frontend)/# add_subdirectory(frontend) # Skip OBS.app build/' CMakeLists.txt
 
         # Configure OBS (headers and libraries only, minimal build)
         echo "Configuring OBS Studio SDK..."
@@ -491,13 +496,35 @@ jobs:
           -DENABLE_BROWSER=OFF \
           -DCMAKE_INSTALL_PREFIX="../obs-studio-build"
 
-        # Build just libobs
+        # Build just libobs and obs-frontend-api
         echo "Building OBS SDK libraries..."
-        cmake --build build --config Release --target libobs obs-frontend-api
+        cmake --build build --config Release --target libobs
 
-        # Install SDK
+        # Build obs-frontend-api separately (it's in frontend/api subdirectory)
+        cd frontend/api
+        cmake -B build -G Xcode \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_PREFIX_PATH="../../build/libobs/Release" \
+          -DCMAKE_INSTALL_PREFIX="../../../obs-studio-build"
+        cmake --build build --config Release
+        cd ../..
+
+        # Manually install SDK components
         echo "Installing OBS SDK..."
-        cmake --install build --config Release
+        mkdir -p ../obs-studio-build/include
+        mkdir -p ../obs-studio-build/lib
+        mkdir -p ../obs-studio-build/data/libobs
+
+        # Copy headers
+        cp -r libobs/*.h ../obs-studio-build/include/
+        cp -r frontend/api/*.h ../obs-studio-build/include/
+
+        # Copy libraries
+        cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ || true
+        cp frontend/api/build/Release/libobs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
+
+        # Copy data files
+        cp -r data/libobs/*.effect ../obs-studio-build/data/libobs/ || true
 
         cd ..
 
