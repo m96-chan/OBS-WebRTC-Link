@@ -597,12 +597,7 @@ TEST_F(PeerConnectionTest, OfferCreationPerformance) {
 }
 
 // Test: Multiple offer-answer exchanges
-// SKIPPED: libdatachannel does not automatically trigger renegotiation when creating
-// additional data channels on an existing PeerConnection. This requires either:
-// - Explicit renegotiation support in libdatachannel (tracked in P3 issue #62)
-// - Alternative implementation approach using setLocalDescription (tracked in P1 issue #61)
-// See: Issue #61 (P1) and Issue #62 (P3)
-TEST_F(PeerConnectionTest, DISABLED_MultipleOfferAnswerExchanges) {
+TEST_F(PeerConnectionTest, MultipleOfferAnswerExchanges) {
     auto config1 = createTestConfig();
     auto pc1 = std::make_unique<PeerConnection>(config1);
 
@@ -615,7 +610,7 @@ TEST_F(PeerConnectionTest, DISABLED_MultipleOfferAnswerExchanges) {
 
     // Second offer
     pc1->createOffer();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     ASSERT_FALSE(localDescriptions.empty());
     std::string offer2 = localDescriptions[0].second;
 
