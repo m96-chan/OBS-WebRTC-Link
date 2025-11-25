@@ -525,15 +525,24 @@ jobs:
         mkdir -p ../obs-studio-build/lib
         mkdir -p ../obs-studio-build/data/libobs
 
+        # Debug: Find where Xcode actually put the built libraries
+        echo "Searching for built libraries..."
+        find build -name "*.dylib" -o -name "*.a" | head -20
+
         # Copy headers
         cp -r libobs/*.h ../obs-studio-build/include/ || true
         mkdir -p ../obs-studio-build/include/util
         cp -r libobs/util/*.h ../obs-studio-build/include/util/ || true
         cp -r UI/obs-frontend-api/*.h ../obs-studio-build/include/ || true
 
-        # Copy libraries
-        cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ || true
-        cp build/UI/obs-frontend-api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
+        # Copy libraries (try multiple possible locations)
+        cp build/libobs/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
+        cp build/Release/libobs.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
+        cp build/libobs/libobs.*.dylib ../obs-studio-build/lib/ || true
+
+        cp build/UI/obs-frontend-api/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
+        cp build/Release/obs-frontend-api.*.dylib ../obs-studio-build/lib/ 2>/dev/null || \
+        cp build/UI/obs-frontend-api/obs-frontend-api.*.dylib ../obs-studio-build/lib/ || true
 
         # Copy data files
         cp -r data/libobs/*.effect ../obs-studio-build/data/libobs/ || true
