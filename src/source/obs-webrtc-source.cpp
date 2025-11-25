@@ -34,7 +34,11 @@ struct webrtc_source_data {
     std::queue<AudioFrame> audio_queue;
 
     // Configuration
+    std::string connection_mode;  // "WHEP" or "P2P"
     std::string server_url;
+    std::string stream_id;
+    std::string auth_token;
+    std::string session_id;  // For P2P mode
     VideoCodec video_codec;
     AudioCodec audio_codec;
 
@@ -63,7 +67,11 @@ static void *webrtc_source_create(obs_data_t *settings, obs_source_t *source)
     data->height = 1080;
 
     // Get settings
+    data->connection_mode = obs_data_get_string(settings, "connection_mode");
     data->server_url = obs_data_get_string(settings, "server_url");
+    data->stream_id = obs_data_get_string(settings, "stream_id");
+    data->auth_token = obs_data_get_string(settings, "auth_token");
+    data->session_id = obs_data_get_string(settings, "session_id");
     const char *codec_str = obs_data_get_string(settings, "video_codec");
 
     if (strcmp(codec_str, "H264") == 0) {
@@ -216,14 +224,15 @@ static void webrtc_source_update(void *data, obs_data_t *settings)
  */
 static void webrtc_source_get_defaults(obs_data_t *settings)
 {
+    obs_data_set_default_string(settings, "connection_mode", "WHEP");
     obs_data_set_default_string(settings, "server_url", "");
+    obs_data_set_default_string(settings, "stream_id", "");
+    obs_data_set_default_string(settings, "auth_token", "");
+    obs_data_set_default_string(settings, "session_id", "");
     obs_data_set_default_string(settings, "video_codec", "H264");
-    obs_data_set_default_string(settings, "connection_mode", "SFU");
     obs_data_set_default_int(settings, "video_bitrate", 2500);
     obs_data_set_default_string(settings, "audio_codec", "opus");
     obs_data_set_default_int(settings, "audio_bitrate", 128);
-    obs_data_set_default_string(settings, "token", "");
-    obs_data_set_default_string(settings, "session_id", "");
 }
 
 #ifdef ENABLE_QT_UI
@@ -288,6 +297,26 @@ static bool webrtc_source_open_settings(obs_properties_t *props, obs_property_t 
 /**
  * @brief Get source properties
  */
+/**
+ * @brief Connection mode changed callback
+ */
+static bool webrtc_source_connection_mode_changed(obs_properties_t *props, obs_property_t *property, obs_data_t *settings)
+{
+    const char *mode = obs_data_get_string(settings, "connection_mode");
+    bool is_whep = (strcmp(mode, "WHEP") == 0);
+    bool is_p2p = (strcmp(mode, "P2P") == 0);
+
+    // Show/hide WHEP fields
+    obs_property_set_visible(obs_properties_get(props, "server_url"), is_whep);
+    obs_property_set_visible(obs_properties_get(props, "stream_id"), is_whep);
+    obs_property_set_visible(obs_properties_get(props, "auth_token"), is_whep);
+
+    // Show/hide P2P fields
+    obs_property_set_visible(obs_properties_get(props, "session_id"), is_p2p);
+
+    return true;
+}
+
 static obs_properties_t *webrtc_source_get_properties(void *data)
 {
     obs_properties_t *props = obs_properties_create();
@@ -302,10 +331,34 @@ static obs_properties_t *webrtc_source_get_properties(void *data)
     obs_properties_add_text(props, "separator1", "---- Basic Settings ----", OBS_TEXT_INFO);
 #endif
 
+    // Connection Mode dropdown
+    obs_property_t *mode = obs_properties_add_list(props, "connection_mode",
+                                                    obs_module_text("Connection Mode"),
+                                                    OBS_COMBO_TYPE_LIST,
+                                                    OBS_COMBO_FORMAT_STRING);
+    obs_property_list_add_string(mode, "WHEP (SFU)", "WHEP");
+    obs_property_list_add_string(mode, "P2P Client", "P2P");
+    obs_property_set_modified_callback(mode, webrtc_source_connection_mode_changed);
+
+    // WHEP Mode settings
     obs_properties_add_text(props, "server_url",
                            obs_module_text("Server URL"),
                            OBS_TEXT_DEFAULT);
 
+    obs_properties_add_text(props, "stream_id",
+                           obs_module_text("Stream ID (optional)"),
+                           OBS_TEXT_DEFAULT);
+
+    obs_properties_add_text(props, "auth_token",
+                           obs_module_text("Bearer Token (optional)"),
+                           OBS_TEXT_PASSWORD);
+
+    // P2P Mode settings
+    obs_properties_add_text(props, "session_id",
+                           obs_module_text("Session ID (from host)"),
+                           OBS_TEXT_DEFAULT);
+
+    // Video Codec
     obs_property_t *codec = obs_properties_add_list(props, "video_codec",
                                                      obs_module_text("Video Codec"),
                                                      OBS_COMBO_TYPE_LIST,
