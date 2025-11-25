@@ -495,7 +495,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: obs-studio-build
-        key: obs-macos-sdk-32.0.2-${{ runner.os }}-v1
+        key: obs-macos-sdk-32.0.2-${{ runner.os }}-v2
 
     - name: Build OBS Studio SDK from source
       if: steps.cache-obs.outputs.cache-hit != 'true'
@@ -599,6 +599,19 @@ jobs:
           ls -la obs-studio-build/lib/libobs.framework 2>/dev/null || echo "libobs.framework not found"
           exit 1
         fi
+
+    - name: Ensure simde headers present
+      run: |
+        if [ -d "obs-studio-build/include/simde" ]; then
+          echo "? simde headers already present in SDK"
+          exit 0
+        fi
+
+        echo "simde headers missing; fetching simd-everywhere..."
+        mkdir -p obs-studio-build/include
+        git clone --depth 1 https://github.com/simd-everywhere/simde.git /tmp/simde
+        cp -R /tmp/simde/simde obs-studio-build/include/
+        echo "? simde headers installed into obs-studio-build/include/simde"
 
     - name: Build plugin with OBS SDK
       run: |
@@ -751,8 +764,9 @@ jobs:
       id: version
       run: |
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          echo "version=${${{ github.event.inputs.tag }}#v}" >> $GITHUB_OUTPUT
+          tag="${{ github.event.inputs.tag }}"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "version=${tag#v}" >> $GITHUB_OUTPUT
         else
           echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
