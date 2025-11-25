@@ -245,6 +245,8 @@ jobs:
           -DENABLE_UI=OFF `
           -DENABLE_SCRIPTING=OFF `
           -DBUILD_TESTS=OFF `
+          -DENABLE_BROWSER=OFF `
+          -DENABLE_LIBDATACHANNEL=OFF `
           -DCMAKE_INSTALL_PREFIX="../obs-studio-build"
 
         # Build just libobs
@@ -469,6 +471,8 @@ jobs:
           -DENABLE_UI=OFF \
           -DENABLE_SCRIPTING=OFF \
           -DBUILD_TESTS=OFF \
+          -DENABLE_BROWSER=OFF \
+          -DENABLE_LIBDATACHANNEL=OFF \
           -DCMAKE_INSTALL_PREFIX="../obs-studio-build"
 
         # Build just libobs
