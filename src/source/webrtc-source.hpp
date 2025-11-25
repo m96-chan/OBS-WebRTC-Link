@@ -64,12 +64,34 @@ struct AudioFrame {
 };
 
 /**
+ * @brief Connection mode for WebRTC Source
+ */
+enum class ConnectionMode {
+    WHEP,  // Server-mediated connection via WHEP
+    P2P    // Direct peer-to-peer connection
+};
+
+/**
  * @brief WebRTC Source configuration
  */
 struct WebRTCSourceConfig {
-    std::string serverUrl;
+    // Connection mode
+    ConnectionMode connectionMode = ConnectionMode::WHEP;
+
+    // WHEP mode settings
+    std::string serverUrl;        // WHEP server URL (HTTP/HTTPS)
+    std::string streamId;         // Stream ID (optional for WHEP)
+    std::string authToken;        // Bearer token for authentication (optional)
+
+    // P2P mode settings
+    std::string signalingUrl;     // Signaling server URL (WebSocket)
+    std::string sessionId;        // Session ID for P2P connection
+
+    // Codec settings
     VideoCodec videoCodec;
     AudioCodec audioCodec;
+
+    // Callbacks
     std::function<void(const VideoFrame&)> videoCallback;
     std::function<void(const AudioFrame&)> audioCallback;
     std::function<void(const std::string&)> errorCallback;
@@ -80,6 +102,10 @@ struct WebRTCSourceConfig {
     int maxReconnectRetries = 5;
     int reconnectInitialDelayMs = 1000;
     int reconnectMaxDelayMs = 30000;
+
+    // Audio-only mode
+    bool audioOnly = false;
+    std::string audioQuality = "Medium";  // "Low", "Medium", "High"
 };
 
 /**

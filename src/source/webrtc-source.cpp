@@ -5,6 +5,8 @@
 
 #include "webrtc-source.hpp"
 #include "core/whep-client.hpp"
+#include "core/signaling-client.hpp"
+#include "core/peer-connection.hpp"
 #include "core/reconnection-manager.hpp"
 #include <stdexcept>
 #include <atomic>
@@ -45,53 +47,20 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        // Check if already started (either active or in the process of connecting)
-        if (active_ || whepClient_) {
+        // Check if already started
+        if (active_ || whepClient_ || (signalingClient_ && peerConnection_)) {
             return false;
         }
 
         try {
-            // Initialize WHEP client for receiving stream
-            core::WHEPConfig whepConfig;
-            whepConfig.url = config_.serverUrl;
-            whepConfig.onConnected = [this]() {
-                active_ = true;
-                setConnectionState(ConnectionState::Connected);
-                // Reset reconnection manager on successful connection
-                if (reconnectionManager_) {
-                    reconnectionManager_->onConnectionSuccess();
-                }
-            };
-            whepConfig.onDisconnected = [this]() {
-                active_ = false;
-                setConnectionState(ConnectionState::Disconnected);
-                // Schedule reconnection on disconnection
-                if (reconnectionManager_ && config_.enableAutoReconnect) {
-                    reconnectionManager_->scheduleReconnect();
-                }
-            };
-            whepConfig.onError = [this](const std::string& error) {
-                if (config_.errorCallback) {
-                    config_.errorCallback(error);
-                }
-                setConnectionState(ConnectionState::Failed);
-                // Schedule reconnection on error
-                if (reconnectionManager_ && config_.enableAutoReconnect) {
-                    reconnectionManager_->scheduleReconnect();
-                }
-            };
-
-            // Create WHEP client (may throw if URL is invalid)
-            whepClient_ = std::make_unique<core::WHEPClient>(whepConfig);
-
-            // Start connection
-            // Note: active_ is set to true only when connection is established (in onConnected callback)
-            // not immediately when start() is called
-            setConnectionState(ConnectionState::Connecting);
-
-            return true;
+            if (config_.connectionMode == ConnectionMode::WHEP) {
+                return startWHEPMode();
+            } else if (config_.connectionMode == ConnectionMode::P2P) {
+                return startP2PMode();
+            } else {
+                throw std::runtime_error("Unknown connection mode");
+            }
         } catch (const std::exception& e) {
-            // Ensure active is false on any error (including invalid URL)
             if (config_.errorCallback) {
                 config_.errorCallback(std::string("Failed to start source: ") + e.what());
             }
@@ -114,8 +83,20 @@ public:
             reconnectionManager_->cancel();
         }
 
+        // Clean up WHEP client
         if (whepClient_) {
             whepClient_.reset();
+        }
+
+        // Clean up P2P connection
+        if (peerConnection_) {
+            peerConnection_.reset();
+        }
+
+        // Clean up signaling client
+        if (signalingClient_) {
+            signalingClient_->disconnect();
+            signalingClient_.reset();
         }
 
         active_ = false;
@@ -133,13 +114,214 @@ public:
     }
 
 private:
+    bool startWHEPMode()
+    {
+        // Initialize WHEP client for receiving stream
+        core::WHEPConfig whepConfig;
+        whepConfig.url = config_.serverUrl;
+        whepConfig.onConnected = [this]() {
+            active_ = true;
+            setConnectionState(ConnectionState::Connected);
+            if (reconnectionManager_) {
+                reconnectionManager_->onConnectionSuccess();
+            }
+        };
+        whepConfig.onDisconnected = [this]() {
+            active_ = false;
+            setConnectionState(ConnectionState::Disconnected);
+            if (reconnectionManager_ && config_.enableAutoReconnect) {
+                reconnectionManager_->scheduleReconnect();
+            }
+        };
+        whepConfig.onError = [this](const std::string& error) {
+            if (config_.errorCallback) {
+                config_.errorCallback(error);
+            }
+            setConnectionState(ConnectionState::Failed);
+            if (reconnectionManager_ && config_.enableAutoReconnect) {
+                reconnectionManager_->scheduleReconnect();
+            }
+        };
+
+        // Create WHEP client
+        whepClient_ = std::make_unique<core::WHEPClient>(whepConfig);
+        setConnectionState(ConnectionState::Connecting);
+        return true;
+    }
+
+    bool startP2PMode()
+    {
+        if (config_.signalingUrl.empty()) {
+            throw std::runtime_error("Signaling URL is required for P2P mode");
+        }
+
+        if (config_.sessionId.empty()) {
+            throw std::runtime_error("Session ID is required for P2P mode");
+        }
+
+        // Initialize signaling client
+        core::SignalingConfig signalingConfig;
+        signalingConfig.url = config_.signalingUrl;
+        signalingConfig.onConnected = [this]() {
+            // Signaling connected, now initiate WebRTC connection
+            initP2PPeerConnection();
+        };
+        signalingConfig.onDisconnected = [this]() {
+            active_ = false;
+            setConnectionState(ConnectionState::Disconnected);
+            if (reconnectionManager_ && config_.enableAutoReconnect) {
+                reconnectionManager_->scheduleReconnect();
+            }
+        };
+        signalingConfig.onError = [this](const std::string& error) {
+            if (config_.errorCallback) {
+                config_.errorCallback(std::string("Signaling error: ") + error);
+            }
+            setConnectionState(ConnectionState::Failed);
+            if (reconnectionManager_ && config_.enableAutoReconnect) {
+                reconnectionManager_->scheduleReconnect();
+            }
+        };
+        signalingConfig.onOffer = [this](const std::string& sdp) {
+            handleRemoteOffer(sdp);
+        };
+        signalingConfig.onAnswer = [this](const std::string& sdp) {
+            handleRemoteAnswer(sdp);
+        };
+        signalingConfig.onIceCandidate = [this](const std::string& candidate, const std::string& mid) {
+            if (peerConnection_) {
+                try {
+                    peerConnection_->addIceCandidate(candidate, mid);
+                } catch (const std::exception& e) {
+                    if (config_.errorCallback) {
+                        config_.errorCallback(std::string("Failed to add ICE candidate: ") + e.what());
+                    }
+                }
+            }
+        };
+
+        signalingClient_ = std::make_unique<core::SignalingClient>(signalingConfig);
+        signalingClient_->connect();
+        setConnectionState(ConnectionState::Connecting);
+        return true;
+    }
+
+    void initP2PPeerConnection()
+    {
+        // Initialize peer connection config
+        core::PeerConnectionConfig pcConfig;
+
+        // Setup callbacks
+        pcConfig.onConnected = [this]() {
+            active_ = true;
+            setConnectionState(ConnectionState::Connected);
+            if (reconnectionManager_) {
+                reconnectionManager_->onConnectionSuccess();
+            }
+        };
+
+        pcConfig.onDisconnected = [this]() {
+            active_ = false;
+            setConnectionState(ConnectionState::Disconnected);
+            if (reconnectionManager_ && config_.enableAutoReconnect) {
+                reconnectionManager_->scheduleReconnect();
+            }
+        };
+
+        pcConfig.onError = [this](const std::string& error) {
+            if (config_.errorCallback) {
+                config_.errorCallback(error);
+            }
+            setConnectionState(ConnectionState::Failed);
+        };
+
+        pcConfig.onIceCandidate = [this](const std::string& candidate, const std::string& mid) {
+            if (signalingClient_ && signalingClient_->isConnected()) {
+                try {
+                    signalingClient_->sendIceCandidate(candidate, mid);
+                } catch (const std::exception& e) {
+                    if (config_.errorCallback) {
+                        config_.errorCallback(std::string("Failed to send ICE candidate: ") + e.what());
+                    }
+                }
+            }
+        };
+
+        pcConfig.onOfferCreated = [this](const std::string& sdp) {
+            if (signalingClient_ && signalingClient_->isConnected()) {
+                try {
+                    signalingClient_->sendOffer(sdp);
+                } catch (const std::exception& e) {
+                    if (config_.errorCallback) {
+                        config_.errorCallback(std::string("Failed to send offer: ") + e.what());
+                    }
+                }
+            }
+        };
+
+        pcConfig.onAnswerCreated = [this](const std::string& sdp) {
+            if (signalingClient_ && signalingClient_->isConnected()) {
+                try {
+                    signalingClient_->sendAnswer(sdp);
+                } catch (const std::exception& e) {
+                    if (config_.errorCallback) {
+                        config_.errorCallback(std::string("Failed to send answer: ") + e.what());
+                    }
+                }
+            }
+        };
+
+        // Video/Audio track callbacks
+        pcConfig.onVideoFrame = config_.videoCallback;
+        pcConfig.onAudioFrame = config_.audioCallback;
+
+        // Create peer connection
+        peerConnection_ = std::make_unique<core::PeerConnection>(pcConfig);
+    }
+
+    void handleRemoteOffer(const std::string& sdp)
+    {
+        if (!peerConnection_) {
+            initP2PPeerConnection();
+        }
+
+        try {
+            peerConnection_->setRemoteDescription(sdp, "offer");
+            // Answer will be created and sent via onAnswerCreated callback
+        } catch (const std::exception& e) {
+            if (config_.errorCallback) {
+                config_.errorCallback(std::string("Failed to handle remote offer: ") + e.what());
+            }
+        }
+    }
+
+    void handleRemoteAnswer(const std::string& sdp)
+    {
+        if (peerConnection_) {
+            try {
+                peerConnection_->setRemoteDescription(sdp, "answer");
+            } catch (const std::exception& e) {
+                if (config_.errorCallback) {
+                    config_.errorCallback(std::string("Failed to handle remote answer: ") + e.what());
+                }
+            }
+        }
+    }
+
     void attemptReconnect()
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        // Clean up existing connection
+        // Clean up existing connections
         if (whepClient_) {
             whepClient_.reset();
+        }
+        if (peerConnection_) {
+            peerConnection_.reset();
+        }
+        if (signalingClient_) {
+            signalingClient_->disconnect();
+            signalingClient_.reset();
         }
 
         // Reset state
@@ -157,6 +339,8 @@ private:
 
     WebRTCSourceConfig config_;
     std::unique_ptr<core::WHEPClient> whepClient_;
+    std::unique_ptr<core::SignalingClient> signalingClient_;
+    std::unique_ptr<core::PeerConnection> peerConnection_;
     std::unique_ptr<core::ReconnectionManager> reconnectionManager_;
     std::atomic<bool> active_;
     std::atomic<ConnectionState> connectionState_;
