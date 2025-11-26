@@ -4,6 +4,7 @@
  */
 
 #include "core/whep-client.hpp"
+#include "core/peer-connection.hpp"
 
 #include <chrono>
 #include <gmock/gmock.h>
@@ -391,4 +392,81 @@ TEST_F(WHEPClientTest, MoveSemantics) {
     auto client3 = std::make_unique<WHEPClient>(config_);
     client3 = std::move(client2);
     EXPECT_TRUE(client3->isConnected());
+}
+
+// =============================================================================
+// WHEP Media Track Reception Tests
+// =============================================================================
+
+/**
+ * @brief Test WHEPConfig with video and audio frame callbacks
+ */
+TEST_F(WHEPClientTest, ConfigWithFrameCallbacks) {
+    std::vector<VideoFrame> receivedVideoFrames;
+    std::vector<AudioFrame> receivedAudioFrames;
+
+    config_.videoFrameCallback = [&receivedVideoFrames](const VideoFrame& frame) {
+        receivedVideoFrames.push_back(frame);
+    };
+    config_.audioFrameCallback = [&receivedAudioFrames](const AudioFrame& frame) {
+        receivedAudioFrames.push_back(frame);
+    };
+
+    EXPECT_NO_THROW({ auto client = std::make_unique<WHEPClient>(config_); });
+}
+
+/**
+ * @brief Test that WHEPClient can be created without frame callbacks (backwards compatible)
+ */
+TEST_F(WHEPClientTest, ConfigWithoutFrameCallbacksBackwardsCompatible) {
+    // Ensure existing tests still work without frame callbacks
+    config_.videoFrameCallback = nullptr;
+    config_.audioFrameCallback = nullptr;
+
+    EXPECT_NO_THROW({ auto client = std::make_unique<WHEPClient>(config_); });
+}
+
+/**
+ * @brief Test that WHEPClient creates internal PeerConnection when frame callbacks are set
+ */
+TEST_F(WHEPClientTest, CreatesPeerConnectionWithFrameCallbacks) {
+    bool videoFrameReceived = false;
+    bool audioFrameReceived = false;
+
+    config_.videoFrameCallback = [&videoFrameReceived](const VideoFrame& frame) {
+        videoFrameReceived = true;
+    };
+    config_.audioFrameCallback = [&audioFrameReceived](const AudioFrame& frame) {
+        audioFrameReceived = true;
+    };
+
+    auto client = std::make_unique<WHEPClient>(config_);
+    EXPECT_TRUE(client->hasPeerConnection());
+}
+
+/**
+ * @brief Test that WHEPClient does not create PeerConnection without frame callbacks
+ */
+TEST_F(WHEPClientTest, NoPeerConnectionWithoutFrameCallbacks) {
+    config_.videoFrameCallback = nullptr;
+    config_.audioFrameCallback = nullptr;
+
+    auto client = std::make_unique<WHEPClient>(config_);
+    EXPECT_FALSE(client->hasPeerConnection());
+}
+
+/**
+ * @brief Test that connect() initiates WebRTC connection when frame callbacks are set
+ */
+TEST_F(WHEPClientTest, ConnectInitiatesWebRTCConnection) {
+    bool videoFrameReceived = false;
+
+    config_.videoFrameCallback = [&videoFrameReceived](const VideoFrame& frame) {
+        videoFrameReceived = true;
+    };
+
+    auto client = std::make_unique<WHEPClient>(config_);
+
+    // connect() should create an offer and send it to WHEP server
+    EXPECT_NO_THROW({ client->connect(); });
 }

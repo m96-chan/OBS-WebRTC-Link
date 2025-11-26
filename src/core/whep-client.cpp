@@ -4,6 +4,7 @@
  */
 
 #include "whep-client.hpp"
+#include "peer-connection.hpp"
 
 #include "whip-client.hpp"  // For HTTPRequest and HTTPResponse
 
@@ -11,6 +12,7 @@
 
 #include <stdexcept>
 #include <regex>
+#include <mutex>
 
 namespace obswebrtc {
 namespace core {
@@ -43,6 +45,11 @@ public:
         if (!isValidUrl(config_.url)) {
             throw std::invalid_argument("Invalid URL format. URL must start with http:// or https://");
         }
+
+        // Create internal PeerConnection if frame callbacks are set
+        if (config_.videoFrameCallback || config_.audioFrameCallback) {
+            initPeerConnection();
+        }
     }
 
     ~Impl() {
@@ -52,6 +59,16 @@ public:
             } catch (...) {
                 // Ignore exceptions during destruction
             }
+        }
+
+        // Clean up PeerConnection
+        if (peerConnection_) {
+            try {
+                peerConnection_->close();
+            } catch (...) {
+                // Ignore exceptions during destruction
+            }
+            peerConnection_.reset();
         }
     }
 
@@ -193,7 +210,111 @@ public:
         return connected_;
     }
 
+    bool hasPeerConnection() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return peerConnection_ != nullptr;
+    }
+
+    void connect() {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (!peerConnection_) {
+            throw std::runtime_error("PeerConnection not initialized. Set frame callbacks to enable media reception.");
+        }
+
+        // Create offer via PeerConnection
+        // The offer will be sent to the WHEP server via localDescriptionCallback
+        peerConnection_->createOffer();
+    }
+
 private:
+    void initPeerConnection() {
+        PeerConnectionConfig pcConfig;
+
+        // Configure ICE servers
+        pcConfig.iceServers = config_.iceServers;
+
+        // Set up video frame callback
+        pcConfig.videoFrameCallback = config_.videoFrameCallback;
+
+        // Set up audio frame callback
+        pcConfig.audioFrameCallback = config_.audioFrameCallback;
+
+        // Set up local description callback to send offer to WHEP server
+        pcConfig.localDescriptionCallback = [this](SdpType type, const std::string& sdp) {
+            handleLocalDescription(type, sdp);
+        };
+
+        // Set up ICE candidate callback to send candidates to WHEP server
+        pcConfig.iceCandidateCallback = [this](const std::string& candidate, const std::string& mid) {
+            handleLocalIceCandidate(candidate, mid);
+        };
+
+        // Set up state change callback
+        pcConfig.stateCallback = [this](ConnectionState state) {
+            handleStateChange(state);
+        };
+
+        // Set up log callback (optional)
+        pcConfig.logCallback = [this](LogLevel level, const std::string& message) {
+            // Could be wired to external logging if needed
+        };
+
+        peerConnection_ = std::make_unique<PeerConnection>(pcConfig);
+    }
+
+    void handleLocalDescription(SdpType type, const std::string& sdp) {
+        if (type != SdpType::Offer) {
+            return;  // WHEP client only sends offers
+        }
+
+        try {
+            // Send offer to WHEP server and get answer
+            std::string answer = sendOffer(sdp);
+
+            // Apply answer to PeerConnection
+            if (!answer.empty() && peerConnection_) {
+                peerConnection_->setRemoteDescription(SdpType::Answer, answer);
+            }
+        } catch (const std::exception& e) {
+            if (config_.onError) {
+                config_.onError("Failed to send offer: " + std::string(e.what()));
+            }
+        }
+    }
+
+    void handleLocalIceCandidate(const std::string& candidate, const std::string& mid) {
+        if (!connected_) {
+            // Buffer candidate until connected
+            pendingIceCandidates_.push_back({candidate, mid});
+            return;
+        }
+
+        try {
+            sendIceCandidate(candidate, mid);
+        } catch (const std::exception& e) {
+            if (config_.onError) {
+                config_.onError("Failed to send ICE candidate: " + std::string(e.what()));
+            }
+        }
+    }
+
+    void handleStateChange(ConnectionState state) {
+        if (state == ConnectionState::Connected || state == ConnectionState::Completed) {
+            // Send any pending ICE candidates
+            for (const auto& pending : pendingIceCandidates_) {
+                try {
+                    sendIceCandidate(pending.first, pending.second);
+                } catch (const std::exception& e) {
+                    if (config_.onError) {
+                        config_.onError("Failed to send buffered ICE candidate: " + std::string(e.what()));
+                    }
+                }
+            }
+            pendingIceCandidates_.clear();
+        }
+    }
+
     /**
      * @brief Send HTTP POST request
      * This is a stub implementation. In production, use a proper HTTP client
@@ -292,6 +413,9 @@ private:
     WHEPConfig config_;
     bool connected_;
     std::string resourceUrl_;
+    std::unique_ptr<PeerConnection> peerConnection_;
+    std::vector<std::pair<std::string, std::string>> pendingIceCandidates_;
+    mutable std::mutex mutex_;
 };
 
 // WHEPClient implementation
@@ -316,6 +440,14 @@ void WHEPClient::disconnect() {
 
 bool WHEPClient::isConnected() const {
     return impl_->isConnected();
+}
+
+bool WHEPClient::hasPeerConnection() const {
+    return impl_->hasPeerConnection();
+}
+
+void WHEPClient::connect() {
+    impl_->connect();
 }
 
 }  // namespace core

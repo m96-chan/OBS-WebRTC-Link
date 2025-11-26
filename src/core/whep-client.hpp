@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "peer-connection.hpp"
+
 #include <functional>
 #include <map>
 #include <memory>
@@ -44,6 +46,13 @@ struct WHEPConfig {
     WHEPDisconnectedCallback onDisconnected;
     WHEPErrorCallback onError;
     WHEPIceCandidateCallback onIceCandidate;
+
+    // Media frame callbacks (optional - for receiving media tracks)
+    VideoFrameCallback videoFrameCallback;
+    AudioFrameCallback audioFrameCallback;
+
+    // ICE server configuration (optional - for WebRTC connection)
+    std::vector<std::string> iceServers;
 };
 
 /**
@@ -120,6 +129,26 @@ public:
      * @return true if connected
      */
     bool isConnected() const;
+
+    /**
+     * @brief Check if internal PeerConnection is created
+     * @return true if PeerConnection exists (frame callbacks are set)
+     */
+    bool hasPeerConnection() const;
+
+    /**
+     * @brief Connect to WHEP server and establish WebRTC connection
+     *
+     * This initiates the full WHEP connection flow:
+     * 1. Create internal PeerConnection (if frame callbacks are set)
+     * 2. Generate SDP offer
+     * 3. Send offer to WHEP server
+     * 4. Receive and apply SDP answer
+     * 5. Exchange ICE candidates
+     *
+     * @throws std::runtime_error if connection fails
+     */
+    void connect();
 
 private:
     class Impl;
