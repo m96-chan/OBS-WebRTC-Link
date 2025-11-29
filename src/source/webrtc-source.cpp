@@ -143,9 +143,42 @@ private:
             }
         };
 
+        // Wire media frame callbacks only if user callbacks are set
+        // This ensures PeerConnection is only created when media reception is needed
+        if (config_.videoCallback) {
+            whepConfig.videoFrameCallback = [this](const core::VideoFrame& coreFrame) {
+                // Convert core::VideoFrame to source::VideoFrame
+                source::VideoFrame sourceFrame;
+                sourceFrame.data = coreFrame.data;
+                sourceFrame.width = coreFrame.width;
+                sourceFrame.height = coreFrame.height;
+                sourceFrame.timestamp = coreFrame.timestamp;
+                sourceFrame.keyframe = coreFrame.keyframe;
+                config_.videoCallback(sourceFrame);
+            };
+        }
+
+        if (config_.audioCallback) {
+            whepConfig.audioFrameCallback = [this](const core::AudioFrame& coreFrame) {
+                // Convert core::AudioFrame to source::AudioFrame
+                source::AudioFrame sourceFrame;
+                sourceFrame.data = coreFrame.data;
+                sourceFrame.sampleRate = coreFrame.sampleRate;
+                sourceFrame.channels = coreFrame.channels;
+                sourceFrame.timestamp = coreFrame.timestamp;
+                config_.audioCallback(sourceFrame);
+            };
+        }
+
         // Create WHEP client
         whepClient_ = std::make_unique<core::WHEPClient>(whepConfig);
         setConnectionState(ConnectionState::Connecting);
+
+        // Initiate connection if PeerConnection is available (frame callbacks are set)
+        if (whepClient_->hasPeerConnection()) {
+            whepClient_->connect();
+        }
+
         return true;
     }
 
