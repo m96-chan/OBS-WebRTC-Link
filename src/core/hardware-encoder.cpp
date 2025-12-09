@@ -13,6 +13,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
+#elif defined(__linux__)
+#include <dlfcn.h>
 #endif
 
 namespace obswebrtc {
