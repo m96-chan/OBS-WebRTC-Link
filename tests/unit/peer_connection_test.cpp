@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 #include <gmock/gmock.h>
@@ -32,8 +33,9 @@ protected:
     std::vector<std::pair<std::string, std::string>> iceCandidates;
     std::vector<std::pair<SdpType, std::string>> localDescriptions;
 
-    // Helper struct to hold independent callback state
+    // Helper struct to hold independent callback state (thread-safe)
     struct CallbackState {
+        mutable std::mutex mutex;
         std::vector<std::string> logMessages;
         std::vector<ConnectionState> stateChanges;
         std::vector<std::pair<std::string, std::string>> iceCandidates;
@@ -82,27 +84,33 @@ protected:
         config.iceServers = {"stun:stun.l.google.com:19302"};
 
         config.logCallback = [&state](LogLevel level, const std::string& message) {
+            std::lock_guard<std::mutex> lock(state.mutex);
             state.logMessages.push_back(message);
         };
 
         config.stateCallback = [&state](ConnectionState s) {
+            std::lock_guard<std::mutex> lock(state.mutex);
             state.stateChanges.push_back(s);
         };
 
         config.iceCandidateCallback = [&state](const std::string& candidate,
                                               const std::string& mid) {
+            std::lock_guard<std::mutex> lock(state.mutex);
             state.iceCandidates.push_back({candidate, mid});
         };
 
         config.localDescriptionCallback = [&state](SdpType type, const std::string& sdp) {
+            std::lock_guard<std::mutex> lock(state.mutex);
             state.localDescriptions.push_back({type, sdp});
         };
 
         config.videoFrameCallback = [&state](const VideoFrame& frame) {
+            std::lock_guard<std::mutex> lock(state.mutex);
             state.videoFrames.push_back(frame);
         };
 
         config.audioFrameCallback = [&state](const AudioFrame& frame) {
+            std::lock_guard<std::mutex> lock(state.mutex);
             state.audioFrames.push_back(frame);
         };
 
