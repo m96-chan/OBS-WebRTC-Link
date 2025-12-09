@@ -205,6 +205,7 @@ set(CORE_SOURCES
     src/core/reconnection-manager.cpp
     src/core/audio-only-config.cpp
     src/core/network-statistics.cpp
+    src/core/hardware-encoder.cpp
 )
 
 add_library(obs-webrtc-core STATIC ${CORE_SOURCES})
