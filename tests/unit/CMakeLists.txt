@@ -277,6 +277,29 @@ else()
     gtest_discover_tests(network_statistics_test)
 endif()
 
+# Hardware Encoder test executable
+add_executable(hardware_encoder_test
+    hardware_encoder_test.cpp
+)
+
+target_include_directories(hardware_encoder_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(hardware_encoder_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover Hardware Encoder tests
+if(WIN32)
+    gtest_add_tests(TARGET hardware_encoder_test)
+else()
+    gtest_discover_tests(hardware_encoder_test)
+endif()
+
 # Settings Dialog test executable (requires Qt)
 if(QT_FOUND)
     add_executable(settings_dialog_test
