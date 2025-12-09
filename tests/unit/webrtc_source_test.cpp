@@ -6,6 +6,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "source/webrtc-source.hpp"
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 using namespace obswebrtc::source;
 using namespace testing;
@@ -61,7 +64,7 @@ TEST_F(WebRTCSourceTest, CanStartAndStop) {
  * @brief Test that WebRTCSource handles video frames
  */
 TEST_F(WebRTCSourceTest, CanReceiveVideoFrame) {
-    bool videoCallbackCalled = false;
+    std::atomic<bool> videoCallbackCalled{false};
 
     WebRTCSourceConfig config;
     config.serverUrl = "http://localhost:8080/whep";
@@ -76,16 +79,18 @@ TEST_F(WebRTCSourceTest, CanReceiveVideoFrame) {
 
     // In real scenario, video frames would arrive via WebRTC
     // Here we just test that the callback can be set
-    EXPECT_FALSE(videoCallbackCalled); // Not called yet in test environment
+    EXPECT_FALSE(videoCallbackCalled.load()); // Not called yet in test environment
 
     source.stop();
+    // Allow time for cleanup to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 /**
  * @brief Test that WebRTCSource handles audio frames
  */
 TEST_F(WebRTCSourceTest, CanReceiveAudioFrame) {
-    bool audioCallbackCalled = false;
+    std::atomic<bool> audioCallbackCalled{false};
 
     WebRTCSourceConfig config;
     config.serverUrl = "http://localhost:8080/whep";
@@ -100,16 +105,18 @@ TEST_F(WebRTCSourceTest, CanReceiveAudioFrame) {
 
     // In real scenario, audio frames would arrive via WebRTC
     // Here we just test that the callback can be set
-    EXPECT_FALSE(audioCallbackCalled); // Not called yet in test environment
+    EXPECT_FALSE(audioCallbackCalled.load()); // Not called yet in test environment
 
     source.stop();
+    // Allow time for cleanup to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 /**
  * @brief Test that WebRTCSource handles connection errors
  */
 TEST_F(WebRTCSourceTest, HandlesConnectionError) {
-    bool errorCallbackCalled = false;
+    std::atomic<bool> errorCallbackCalled{false};
 
     WebRTCSourceConfig config;
     config.serverUrl = "http://invalid-server:9999/whep";
@@ -125,6 +132,9 @@ TEST_F(WebRTCSourceTest, HandlesConnectionError) {
     // but the connection will fail eventually
     source.start();
     EXPECT_FALSE(source.isActive());
+    source.stop();
+    // Allow time for cleanup to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 /**
@@ -171,13 +181,15 @@ TEST_F(WebRTCSourceTest, CannotStartTwice) {
     EXPECT_FALSE(source.start());
 
     source.stop();
+    // Allow time for cleanup to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 /**
  * @brief Test that WebRTCSource handles connection state changes
  */
 TEST_F(WebRTCSourceTest, HandlesConnectionStateChanges) {
-    bool stateChangeCalled = false;
+    std::atomic<bool> stateChangeCalled{false};
 
     WebRTCSourceConfig config;
     config.serverUrl = "http://localhost:8080/whep";
@@ -193,4 +205,6 @@ TEST_F(WebRTCSourceTest, HandlesConnectionStateChanges) {
     // State changes happen asynchronously
     // We just verify the callback can be set
     source.stop();
+    // Allow time for cleanup to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
