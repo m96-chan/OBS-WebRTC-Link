@@ -4,17 +4,23 @@
  */
 
 #include "reconnection-manager.hpp"
-#include <thread>
-#include <mutex>
+
+#include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <algorithm>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 namespace obswebrtc {
 namespace core {
 
 /**
  * @brief Private implementation of ReconnectionManager
+ *
+ * Uses a single worker thread with condition variable for efficient
+ * reconnection scheduling. This avoids creating a new thread for each
+ * reconnection attempt.
  */
 class ReconnectionManager::Impl {
 public:
@@ -22,96 +28,59 @@ public:
         : config_(config)
         , retryCount_(0)
         , reconnecting_(false)
-        , cancelled_(false)
+        , stopped_(false)
+        , hasScheduledReconnect_(false)
     {
+        // Start the worker thread
+        workerThread_ = std::thread([this]() { workerLoop(); });
     }
 
     ~Impl()
     {
-        cancel();
+        stop();
     }
 
     bool scheduleReconnect()
     {
-        // Check if max retries reached and cancel any pending reconnection
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock<std::mutex> lock(mutex_);
 
-            // Check if max retries reached
-            if (retryCount_ >= config_.maxRetries) {
-                return false;
-            }
-
-            // Set cancellation flag for any pending reconnection
-            cancelled_ = true;
+        // Check if max retries reached
+        if (retryCount_ >= config_.maxRetries) {
+            return false;
         }
 
-        // Join thread outside of mutex to avoid deadlock
-        if (reconnectThread_.joinable()) {
-            reconnectThread_.join();
+        // Calculate delay using exponential backoff
+        int64_t delay = calculateDelay();
+
+        // Increment retry count
+        retryCount_++;
+
+        // Schedule the reconnection
+        reconnectTime_ = std::chrono::steady_clock::now() +
+                         std::chrono::milliseconds(delay);
+        hasScheduledReconnect_ = true;
+        reconnecting_ = true;
+
+        // Notify state change
+        if (config_.stateCallback) {
+            config_.stateCallback(true, retryCount_);
         }
 
-        int64_t delay;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-
-            // Calculate delay using exponential backoff
-            delay = calculateDelay();
-
-            // Increment retry count
-            retryCount_++;
-
-            // Update state
-            reconnecting_ = true;
-            cancelled_ = false;
-
-            // Notify state change
-            if (config_.stateCallback) {
-                config_.stateCallback(true, retryCount_);
-            }
-        }
-
-        // Schedule reconnection on a new thread
-        reconnectThread_ = std::thread([this, delay]() {
-            // Wait for delay
-            std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-
-            // Check if cancelled
-            if (cancelled_) {
-                return;
-            }
-
-            // Call reconnect callback
-            if (config_.reconnectCallback) {
-                config_.reconnectCallback();
-            }
-
-            // Update state
-            std::lock_guard<std::mutex> lock(mutex_);
-            reconnecting_ = false;
-
-            // Notify state change
-            if (config_.stateCallback) {
-                config_.stateCallback(false, retryCount_);
-            }
-        });
+        // Wake up the worker thread
+        cv_.notify_one();
 
         return true;
     }
 
     void cancel()
     {
-        // Set cancellation flags first
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            cancelled_ = true;
+            hasScheduledReconnect_ = false;
             reconnecting_ = false;
         }
-
-        // Join thread outside of mutex to avoid deadlock
-        if (reconnectThread_.joinable()) {
-            reconnectThread_.join();
-        }
+        // Wake up worker thread so it can check the cancelled state
+        cv_.notify_one();
     }
 
     void reset()
@@ -132,6 +101,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         retryCount_ = 0;
         reconnecting_ = false;
+        hasScheduledReconnect_ = false;
 
         // Notify state change
         if (config_.stateCallback) {
@@ -155,6 +125,71 @@ public:
     }
 
 private:
+    void stop()
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            stopped_ = true;
+            hasScheduledReconnect_ = false;
+        }
+        cv_.notify_one();
+
+        if (workerThread_.joinable()) {
+            workerThread_.join();
+        }
+    }
+
+    void workerLoop()
+    {
+        while (true) {
+            std::unique_lock<std::mutex> lock(mutex_);
+
+            // Wait until we have a scheduled reconnect or are stopped
+            cv_.wait(lock, [this] {
+                return stopped_ || hasScheduledReconnect_;
+            });
+
+            if (stopped_) {
+                break;
+            }
+
+            if (hasScheduledReconnect_) {
+                // Wait until the reconnect time or cancellation
+                auto waitResult = cv_.wait_until(lock, reconnectTime_, [this] {
+                    return stopped_ || !hasScheduledReconnect_;
+                });
+
+                // Check if we should perform the reconnect
+                // waitResult is false if the timeout expired (time to reconnect)
+                if (!waitResult && hasScheduledReconnect_ && !stopped_) {
+                    hasScheduledReconnect_ = false;
+
+                    // Store callback and state to call outside lock
+                    auto callback = config_.reconnectCallback;
+                    auto stateCallback = config_.stateCallback;
+                    int currentRetryCount = retryCount_;
+
+                    // Release lock before calling callbacks to avoid deadlock
+                    lock.unlock();
+
+                    // Call reconnect callback
+                    if (callback) {
+                        callback();
+                    }
+
+                    // Re-acquire lock to update state
+                    lock.lock();
+                    reconnecting_ = false;
+
+                    // Notify state change
+                    if (stateCallback) {
+                        stateCallback(false, currentRetryCount);
+                    }
+                }
+            }
+        }
+    }
+
     int64_t calculateDelay() const
     {
         // Exponential backoff: delay = initialDelay * 2^retryCount
@@ -175,9 +210,12 @@ private:
     ReconnectionConfig config_;
     std::atomic<int> retryCount_;
     std::atomic<bool> reconnecting_;
-    std::atomic<bool> cancelled_;
+    std::atomic<bool> stopped_;
+    bool hasScheduledReconnect_;
+    std::chrono::steady_clock::time_point reconnectTime_;
     std::mutex mutex_;
-    std::thread reconnectThread_;
+    std::condition_variable cv_;
+    std::thread workerThread_;
 };
 
 // ReconnectionManager implementation
