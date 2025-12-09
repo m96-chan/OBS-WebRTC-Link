@@ -1,0 +1,33 @@
+# Cppcheck suppression file for OBS-WebRTC-Link
+#
+# Format: [error id]:[filename]:[line]
+# Or: [error id]:*:[line] to suppress in all files
+# Or: [error id] to suppress everywhere
+
+# Suppress warnings in third-party dependencies
+*:deps/*
+
+# Suppress false positives for standard library usage
+unusedFunction:src/*
+missingIncludeSystem
+
+# Suppress warnings for test files (Google Test macros)
+syntaxError:tests/*
+cppcheckError:tests/*
+
+# Suppress specific known false positives
+# Example: passedByValue for callback parameters
+passedByValue:src/core/*.cpp
+
+# Suppress noExplicitConstructor for simple config structs
+noExplicitConstructor:src/core/*Config
+
+# Suppress uninitMemberVar for classes with lazy initialization
+uninitMemberVar:src/core/peer-connection.cpp
+uninitMemberVar:src/core/signaling-client.cpp
+
+# Allow const_cast in specific low-level code
+constStatement:src/core/peer-connection.cpp
+
+# Suppress variableScope for intentional scoping patterns
+variableScope:src/core/*.cpp

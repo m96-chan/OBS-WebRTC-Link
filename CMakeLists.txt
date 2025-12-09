@@ -399,6 +399,74 @@ if(BUILD_DOCUMENTATION)
     endif()
 endif()
 
+# Static analysis with clang-tidy
+option(ENABLE_CLANG_TIDY "Enable clang-tidy static analysis" OFF)
+
+if(ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES "clang-tidy" "clang-tidy-17" "clang-tidy-16" "clang-tidy-15")
+    if(CLANG_TIDY_EXE)
+        message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+
+        # Set clang-tidy for all targets
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+
+        # Add custom target for running clang-tidy
+        add_custom_target(clang-tidy
+            COMMAND ${CLANG_TIDY_EXE}
+                -p ${CMAKE_BINARY_DIR}
+                ${CMAKE_SOURCE_DIR}/src/core/*.cpp
+                ${CMAKE_SOURCE_DIR}/src/output/*.cpp
+                ${CMAKE_SOURCE_DIR}/src/source/*.cpp
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Running clang-tidy static analysis"
+            VERBATIM
+        )
+
+        message(STATUS "Static analysis target 'clang-tidy' configured. Run 'cmake --build . --target clang-tidy' to analyze.")
+    else()
+        message(WARNING "clang-tidy not found. Static analysis disabled.")
+    endif()
+endif()
+
+# Static analysis with cppcheck
+option(ENABLE_CPPCHECK "Enable cppcheck static analysis" OFF)
+
+if(ENABLE_CPPCHECK)
+    find_program(CPPCHECK_EXE NAMES "cppcheck")
+    if(CPPCHECK_EXE)
+        message(STATUS "cppcheck found: ${CPPCHECK_EXE}")
+
+        # Add custom target for running cppcheck
+        add_custom_target(cppcheck
+            COMMAND ${CPPCHECK_EXE}
+                --enable=all
+                --std=c++17
+                --suppressions-list=${CMAKE_SOURCE_DIR}/.cppcheck-suppressions
+                --error-exitcode=1
+                --inline-suppr
+                --quiet
+                -I ${CMAKE_SOURCE_DIR}/src
+                ${CMAKE_SOURCE_DIR}/src
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Running cppcheck static analysis"
+            VERBATIM
+        )
+
+        message(STATUS "Static analysis target 'cppcheck' configured. Run 'cmake --build . --target cppcheck' to analyze.")
+    else()
+        message(WARNING "cppcheck not found. Static analysis disabled.")
+    endif()
+endif()
+
+# Combined static analysis target
+if(ENABLE_CLANG_TIDY AND ENABLE_CPPCHECK AND CLANG_TIDY_EXE AND CPPCHECK_EXE)
+    add_custom_target(static-analysis
+        DEPENDS clang-tidy cppcheck
+        COMMENT "Running all static analysis tools"
+    )
+    message(STATUS "Combined static analysis target 'static-analysis' configured.")
+endif()
+
 if(BUILD_TESTS_ONLY)
     message(STATUS "OBS WebRTC Link tests configuration complete (plugin build skipped)")
 else()
