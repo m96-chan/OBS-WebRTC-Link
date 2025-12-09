@@ -199,6 +199,7 @@ endif()
 set(CORE_SOURCES
     src/core/peer-connection.cpp
     src/core/signaling-client.cpp
+    src/core/http-client.cpp
     src/core/whip-client.cpp
     src/core/whep-client.cpp
     src/core/p2p-connection.cpp
