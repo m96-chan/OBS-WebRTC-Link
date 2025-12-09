@@ -300,6 +300,29 @@ else()
     gtest_discover_tests(hardware_encoder_test)
 endif()
 
+# Connection Manager test executable
+add_executable(connection_manager_test
+    connection_manager_test.cpp
+)
+
+target_include_directories(connection_manager_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(connection_manager_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover Connection Manager tests
+if(WIN32)
+    gtest_add_tests(TARGET connection_manager_test)
+else()
+    gtest_discover_tests(connection_manager_test)
+endif()
+
 # Settings Dialog test executable (requires Qt)
 if(QT_FOUND)
     add_executable(settings_dialog_test
