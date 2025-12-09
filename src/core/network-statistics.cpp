@@ -4,6 +4,7 @@
  */
 
 #include "network-statistics.hpp"
+#include "constants.hpp"
 
 #include <cstdio>
 #include <iomanip>
@@ -273,11 +274,12 @@ std::string NetworkStatisticsFormatter::formatStats(const NetworkStats& stats) {
 }
 
 std::string NetworkStatisticsFormatter::formatBitrate(uint32_t bitrateKbps) {
+    using namespace constants;
     std::ostringstream oss;
 
-    if (bitrateKbps >= 1000) {
+    if (bitrateKbps >= kKbpsPerMbps) {
         oss << std::fixed << std::setprecision(1)
-            << (static_cast<double>(bitrateKbps) / 1000.0) << " Mbps";
+            << kbpsToMbps(bitrateKbps) << " Mbps";
     } else {
         oss << bitrateKbps << " kbps";
     }
@@ -286,17 +288,18 @@ std::string NetworkStatisticsFormatter::formatBitrate(uint32_t bitrateKbps) {
 }
 
 std::string NetworkStatisticsFormatter::formatBytes(uint64_t bytes) {
+    using namespace constants;
     std::ostringstream oss;
 
-    if (bytes >= 1000000000) {
+    if (bytes >= kBytesPerGB) {
         oss << std::fixed << std::setprecision(1)
-            << (static_cast<double>(bytes) / 1000000000.0) << " GB";
-    } else if (bytes >= 1000000) {
+            << bytesToGB(bytes) << " GB";
+    } else if (bytes >= kBytesPerMB) {
         oss << std::fixed << std::setprecision(1)
-            << (static_cast<double>(bytes) / 1000000.0) << " MB";
-    } else if (bytes >= 1000) {
+            << bytesToMB(bytes) << " MB";
+    } else if (bytes >= kBytesPerKB) {
         oss << std::fixed << std::setprecision(1)
-            << (static_cast<double>(bytes) / 1000.0) << " KB";
+            << bytesToKB(bytes) << " KB";
     } else {
         oss << bytes << " B";
     }

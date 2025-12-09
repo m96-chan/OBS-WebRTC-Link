@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 #include "audio-only-config.hpp"
+#include "constants.hpp"
+
 #include <stdexcept>
 
 AudioOnlyConfig::AudioOnlyConfig()
@@ -47,7 +49,8 @@ int AudioOnlyConfig::getAudioBitrate() const
 
 void AudioOnlyConfig::setCustomAudioBitrate(int bitrateKbps)
 {
-    if (bitrateKbps < 16 || bitrateKbps > 128) {
+    using namespace obswebrtc::core::constants;
+    if (bitrateKbps < kMinAudioBitrateKbps || bitrateKbps > kMaxAudioBitrateKbps) {
         throw std::invalid_argument("Audio bitrate must be between 16 and 128 kbps");
     }
     customBitrateKbps_ = bitrateKbps;
