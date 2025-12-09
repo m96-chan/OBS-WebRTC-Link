@@ -7,6 +7,8 @@
 
 #include <rtc/rtc.hpp>
 
+#include <future>
+#include <memory>
 #include <mutex>
 #include <random>
 #include <sstream>
@@ -107,11 +109,12 @@ public:
         }
 
         // Set local description callback to capture offer
-        std::promise<std::string> offerPromise;
-        auto offerFuture = offerPromise.get_future();
+        // Use shared_ptr to prevent use-after-free if callback is invoked asynchronously
+        auto offerPromise = std::make_shared<std::promise<std::string>>();
+        auto offerFuture = offerPromise->get_future();
 
         peerConnection_->onLocalDescription(
-            [this, &offerPromise](rtc::Description description) {
+            [this, offerPromise](rtc::Description description) {
                 std::string sdp = std::string(description);
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
@@ -123,7 +126,7 @@ public:
                     config_.onOfferGenerated(sdp);
                 }
 
-                offerPromise.set_value(sdp);
+                offerPromise->set_value(sdp);
             });
 
         // Trigger offer generation by setting local description
@@ -184,11 +187,12 @@ public:
         }
 
         // Set local description callback to capture answer
-        std::promise<std::string> answerPromise;
-        auto answerFuture = answerPromise.get_future();
+        // Use shared_ptr to prevent use-after-free if callback is invoked asynchronously
+        auto answerPromise = std::make_shared<std::promise<std::string>>();
+        auto answerFuture = answerPromise->get_future();
 
         peerConnection_->onLocalDescription(
-            [this, &answerPromise](rtc::Description description) {
+            [this, answerPromise](rtc::Description description) {
                 std::string sdp = std::string(description);
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
@@ -200,7 +204,7 @@ public:
                     config_.onAnswerGenerated(sdp);
                 }
 
-                answerPromise.set_value(sdp);
+                answerPromise->set_value(sdp);
             });
 
         // Trigger answer generation by setting local description
