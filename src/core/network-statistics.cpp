@@ -97,12 +97,13 @@ public:
             now - lastBitrateCalculation_).count();
 
         if (elapsed > 0) {
-            // Calculate send bitrate (bytes to kbps: bytes * 8 / 1000 / (elapsed_ms / 1000))
-            // Simplified: bytes * 8 / elapsed_ms
+            // Calculate send bitrate in kbps
+            // bits/ms = kbps because: 1 bit/ms = 1000 bits/s = 1 kbps
+            // Formula: (bytes * 8 bits/byte) / elapsed_ms = bits/ms = kbps
             uint64_t bytesSentDelta = stats_.bytesSent - lastBytesSent_;
             stats_.sendBitrateKbps = static_cast<uint32_t>((bytesSentDelta * 8) / elapsed);
 
-            // Calculate receive bitrate
+            // Calculate receive bitrate in kbps
             uint64_t bytesReceivedDelta = stats_.bytesReceived - lastBytesReceived_;
             stats_.receiveBitrateKbps = static_cast<uint32_t>((bytesReceivedDelta * 8) / elapsed);
 

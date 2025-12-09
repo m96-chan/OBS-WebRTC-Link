@@ -321,7 +321,9 @@ TEST_F(NetworkStatisticsTest, ClearStatisticsCallback) {
 TEST_F(NetworkStatisticsTest, SendBitrateCalculation) {
     NetworkStatisticsCollector collector;
 
-    // Record 125KB (1Mbps for 1 second)
+    // Record 125,000 bytes in ~100ms
+    // Expected bitrate: (125000 * 8) / 100 = 10,000 kbps = 10 Mbps
+    // (because bits/ms = kbps: 1 bit/ms = 1000 bits/s = 1 kbps)
     collector.recordBytesSent(125000);
 
     // Wait a bit and calculate bitrate
@@ -330,9 +332,10 @@ TEST_F(NetworkStatisticsTest, SendBitrateCalculation) {
     collector.calculateBitrates();
     NetworkStats stats = collector.getCurrentStats();
 
-    // Bitrate should be approximately 1000 kbps (may vary due to timing)
-    // We use a wide range because timing is not precise in tests
-    EXPECT_GT(stats.sendBitrateKbps, 0);
+    // Bitrate should be approximately 10,000 kbps (10 Mbps)
+    // Allow wide range due to timing variance: 5,000 - 20,000 kbps
+    EXPECT_GT(stats.sendBitrateKbps, 5000);
+    EXPECT_LT(stats.sendBitrateKbps, 20000);
 }
 
 /**
@@ -341,7 +344,8 @@ TEST_F(NetworkStatisticsTest, SendBitrateCalculation) {
 TEST_F(NetworkStatisticsTest, ReceiveBitrateCalculation) {
     NetworkStatisticsCollector collector;
 
-    // Record 250KB (2Mbps for 1 second)
+    // Record 250,000 bytes in ~100ms
+    // Expected bitrate: (250000 * 8) / 100 = 20,000 kbps = 20 Mbps
     collector.recordBytesReceived(250000);
 
     // Wait a bit and calculate bitrate
@@ -350,8 +354,10 @@ TEST_F(NetworkStatisticsTest, ReceiveBitrateCalculation) {
     collector.calculateBitrates();
     NetworkStats stats = collector.getCurrentStats();
 
-    // Bitrate should be approximately 2000 kbps
-    EXPECT_GT(stats.receiveBitrateKbps, 0);
+    // Bitrate should be approximately 20,000 kbps (20 Mbps)
+    // Allow wide range due to timing variance: 10,000 - 40,000 kbps
+    EXPECT_GT(stats.receiveBitrateKbps, 10000);
+    EXPECT_LT(stats.receiveBitrateKbps, 40000);
 }
 
 // =============================================================================
