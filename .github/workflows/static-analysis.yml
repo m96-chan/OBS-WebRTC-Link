@@ -36,14 +36,14 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          # Run clang-tidy on source files
-          find src -name '*.cpp' -not -path '*/deps/*' | \
+          # Run clang-tidy on core source files (excluding UI which requires Qt)
+          find src/core -name '*.cpp' | \
             xargs -I {} clang-tidy {} -p build --quiet 2>&1 | \
             tee clang-tidy-output.txt
 
-          # Check for errors
-          if grep -q "error:" clang-tidy-output.txt; then
-            echo "clang-tidy found errors"
+          # Check for errors (excluding "Error while processing" messages which can be Qt-related)
+          if grep -E "^[^:]+:[0-9]+:[0-9]+: error:" clang-tidy-output.txt; then
+            echo "clang-tidy found code errors"
             exit 1
           fi
 
