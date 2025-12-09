@@ -254,6 +254,29 @@ else()
     gtest_discover_tests(audio_only_mode_test)
 endif()
 
+# Network Statistics test executable
+add_executable(network_statistics_test
+    network_statistics_test.cpp
+)
+
+target_include_directories(network_statistics_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+)
+
+target_link_libraries(network_statistics_test PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
+    obs-webrtc-core
+)
+
+# Discover Network Statistics tests
+if(WIN32)
+    gtest_add_tests(TARGET network_statistics_test)
+else()
+    gtest_discover_tests(network_statistics_test)
+endif()
+
 # Settings Dialog test executable (requires Qt)
 if(QT_FOUND)
     add_executable(settings_dialog_test
