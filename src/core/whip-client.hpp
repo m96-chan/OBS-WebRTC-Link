@@ -9,31 +9,14 @@
 
 #pragma once
 
+#include "http-client.hpp"
+
 #include <functional>
-#include <map>
 #include <memory>
 #include <string>
 
 namespace obswebrtc {
 namespace core {
-
-/**
- * @brief HTTP Request structure
- */
-struct HTTPRequest {
-    std::map<std::string, std::string> headers;
-    std::string body;
-    std::string contentType;
-};
-
-/**
- * @brief HTTP Response structure
- */
-struct HTTPResponse {
-    int statusCode;
-    std::map<std::string, std::string> headers;
-    std::string body;
-};
 
 /**
  * @brief Callback function types for WHIP events

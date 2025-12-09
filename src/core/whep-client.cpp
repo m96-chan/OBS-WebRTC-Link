@@ -4,9 +4,8 @@
  */
 
 #include "whep-client.hpp"
+#include "http-client.hpp"
 #include "peer-connection.hpp"
-
-#include "whip-client.hpp"  // For HTTPRequest and HTTPResponse
 
 #include <nlohmann/json.hpp>
 
@@ -93,7 +92,7 @@ public:
         HTTPResponse response;
         try {
             // Send POST request (in real implementation, use HTTP client library)
-            response = sendHTTPPost(config_.url, request);
+            response = HTTPClient::post(config_.url, request);
         } catch (const std::exception& e) {
             // Handle network errors (timeout, DNS, connection refused, SSL)
             if (config_.onError) {
@@ -164,7 +163,7 @@ public:
         request.headers["Content-Type"] = "application/trickle-ice-sdpfrag";
 
         // Send PATCH request to resource URL
-        HTTPResponse response = sendHTTPPatch(resourceUrl_, request);
+        HTTPResponse response = HTTPClient::patch(resourceUrl_, request);
 
         if (response.statusCode < 200 || response.statusCode >= 300) {
             if (config_.onError) {
@@ -190,7 +189,7 @@ public:
             }
 
             try {
-                sendHTTPDelete(resourceUrl_, request);
+                HTTPClient::del(resourceUrl_, request);
             } catch (const std::exception& e) {
                 if (config_.onError) {
                     config_.onError("Error during disconnect: " + std::string(e.what()));
@@ -313,101 +312,6 @@ private:
             }
             pendingIceCandidates_.clear();
         }
-    }
-
-    /**
-     * @brief Send HTTP POST request
-     * This is a stub implementation. In production, use a proper HTTP client
-     * library like libcurl.
-     */
-    HTTPResponse sendHTTPPost(const std::string& url, const HTTPRequest& request) {
-        // Stub implementation for testing
-        // In production, implement using libcurl or similar HTTP client
-        HTTPResponse response;
-
-        // Check for invalid token in stub implementation
-        auto authIt = request.headers.find("Authorization");
-        if (authIt != request.headers.end() &&
-            authIt->second.find("invalid-token") != std::string::npos) {
-            response.statusCode = 401;
-            return response;
-        }
-
-        // Check for forbidden token
-        if (authIt != request.headers.end() &&
-            authIt->second.find("forbidden-token") != std::string::npos) {
-            response.statusCode = 403;
-            return response;
-        }
-
-        // Simulate network errors based on URL patterns
-        if (url.find("192.0.2.1") != std::string::npos) {
-            // TEST-NET-1 - simulate timeout
-            throw std::runtime_error("Network timeout");
-        }
-
-        if (url.find("nonexistent.invalid.domain.tld") != std::string::npos) {
-            // Simulate DNS resolution failure
-            throw std::runtime_error("DNS resolution failed");
-        }
-
-        if (url.find("localhost:19998") != std::string::npos) {
-            // Simulate connection refused
-            throw std::runtime_error("Connection refused");
-        }
-
-        if (url.find("self-signed.badssl.com") != std::string::npos) {
-            // Simulate SSL certificate error
-            throw std::runtime_error("SSL certificate verification failed");
-        }
-
-        // Simulate HTTP error codes based on URL path
-        if (url.find("nonexistent-endpoint") != std::string::npos) {
-            response.statusCode = 404;
-            return response;
-        }
-
-        if (url.find("error-endpoint") != std::string::npos) {
-            response.statusCode = 500;
-            return response;
-        }
-
-        if (url.find("unavailable-endpoint") != std::string::npos) {
-            response.statusCode = 503;
-            return response;
-        }
-
-        // Check for malformed SDP (simulates 400 Bad Request)
-        if (request.body.find("invalid sdp content") != std::string::npos) {
-            response.statusCode = 400;
-            return response;
-        }
-
-        response.statusCode = 201;
-        response.headers["Location"] = url + "/resource/123";
-        response.headers["Content-Type"] = "application/sdp";
-        response.body = "v=0\r\no=- 789 012 IN IP4 0.0.0.0\r\n";  // Mock SDP answer
-        return response;
-    }
-
-    /**
-     * @brief Send HTTP PATCH request
-     */
-    HTTPResponse sendHTTPPatch(const std::string& url, const HTTPRequest& request) {
-        // Stub implementation for testing
-        HTTPResponse response;
-        response.statusCode = 204;  // No Content
-        return response;
-    }
-
-    /**
-     * @brief Send HTTP DELETE request
-     */
-    HTTPResponse sendHTTPDelete(const std::string& url, const HTTPRequest& request) {
-        // Stub implementation for testing
-        HTTPResponse response;
-        response.statusCode = 200;
-        return response;
     }
 
     WHEPConfig config_;
