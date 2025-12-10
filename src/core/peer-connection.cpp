@@ -4,6 +4,7 @@
  */
 
 #include "peer-connection.hpp"
+#include "constants.hpp"
 
 #include <cstring>
 #include <mutex>
@@ -428,8 +429,8 @@ private:
         frame.data.resize(data.size());
         std::memcpy(frame.data.data(), data.data(), data.size());
         frame.timestamp = frameInfo.timestamp;
-        frame.sampleRate = 48000; // TODO: Parse from SDP or codec configuration
-        frame.channels = 2;       // TODO: Parse from SDP or codec configuration
+        frame.sampleRate = constants::kDefaultAudioSampleRate; // TODO: Parse from SDP or codec configuration
+        frame.channels = constants::kDefaultAudioChannels;     // TODO: Parse from SDP or codec configuration
 
         log(LogLevel::Debug, "Audio frame received: " + std::to_string(data.size()) + " bytes, timestamp: " + std::to_string(frameInfo.timestamp));
 

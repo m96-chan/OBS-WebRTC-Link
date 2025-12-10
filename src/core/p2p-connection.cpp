@@ -4,6 +4,7 @@
  */
 
 #include "p2p-connection.hpp"
+#include "constants.hpp"
 
 #include <rtc/rtc.hpp>
 
@@ -33,7 +34,7 @@ public:
     }
 
     std::string generateSessionId() {
-        // Generate 8-character alphanumeric session ID
+        // Generate alphanumeric session ID
         static const char alphanum[] =
             "0123456789"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -44,8 +45,8 @@ public:
         std::uniform_int_distribution<> dis(0, sizeof(alphanum) - 2);
 
         std::string sessionId;
-        sessionId.reserve(8);
-        for (int i = 0; i < 8; ++i) {
+        sessionId.reserve(constants::kSessionIdLength);
+        for (int i = 0; i < constants::kSessionIdLength; ++i) {
             sessionId += alphanum[dis(gen)];
         }
 
