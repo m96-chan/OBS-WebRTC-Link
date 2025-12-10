@@ -118,13 +118,8 @@ public:
     void sendOffer(const std::string& sdp) {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        if (sdp.empty()) {
-            throw std::invalid_argument("SDP offer cannot be empty");
-        }
-
-        if (!transport_ || !transport_->isConnected()) {
-            throw std::runtime_error("Not connected to signaling server");
-        }
+        validateSdp(sdp, "offer");
+        validateConnected();
 
         nlohmann::json message;
         message["type"] = "offer";
@@ -143,13 +138,8 @@ public:
     void sendAnswer(const std::string& sdp) {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        if (sdp.empty()) {
-            throw std::invalid_argument("SDP answer cannot be empty");
-        }
-
-        if (!transport_ || !transport_->isConnected()) {
-            throw std::runtime_error("Not connected to signaling server");
-        }
+        validateSdp(sdp, "answer");
+        validateConnected();
 
         nlohmann::json message;
         message["type"] = "answer";
@@ -171,10 +161,7 @@ public:
         if (candidate.empty()) {
             throw std::invalid_argument("ICE candidate cannot be empty");
         }
-
-        if (!transport_ || !transport_->isConnected()) {
-            throw std::runtime_error("Not connected to signaling server");
-        }
+        validateConnected();
 
         nlohmann::json message;
         message["type"] = "candidate";
@@ -253,6 +240,20 @@ public:
     }
 
 private:
+    // Validation helper: throws if not connected (must be called with mutex held)
+    void validateConnected() const {
+        if (!transport_ || !transport_->isConnected()) {
+            throw std::runtime_error("Not connected to signaling server");
+        }
+    }
+
+    // Validation helper: throws if SDP is empty (must be called with mutex held)
+    void validateSdp(const std::string& sdp, const char* type) const {
+        if (sdp.empty()) {
+            throw std::invalid_argument(std::string("SDP ") + type + " cannot be empty");
+        }
+    }
+
     SignalingConfig config_;
     std::unique_ptr<SignalingTransport> transport_;
     mutable std::mutex mutex_;
