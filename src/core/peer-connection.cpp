@@ -51,8 +51,14 @@ public:
     ~Impl() {
         try {
             close();
+        } catch (const std::exception& e) {
+            // Log but don't rethrow - exceptions must not escape destructors
+            log(LogLevel::Warning,
+                std::string("Exception during PeerConnection cleanup: ") + e.what());
         } catch (...) {
-            // Ignore exceptions in destructor
+            // Log but don't rethrow - exceptions must not escape destructors
+            log(LogLevel::Warning,
+                "Unknown exception during PeerConnection cleanup");
         }
     }
 
@@ -287,8 +293,12 @@ public:
             if (desc.has_value()) {
                 return std::string(*desc);
             }
+        } catch (const std::exception& e) {
+            log(LogLevel::Warning,
+                std::string("Failed to get local description: ") + e.what());
         } catch (...) {
-            // Ignore exceptions
+            log(LogLevel::Warning,
+                "Failed to get local description: unknown error");
         }
 
         return "";
