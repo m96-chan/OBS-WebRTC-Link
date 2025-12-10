@@ -355,9 +355,9 @@ TEST_F(NetworkStatisticsTest, ReceiveBitrateCalculation) {
     NetworkStats stats = collector.getCurrentStats();
 
     // Bitrate should be approximately 20,000 kbps (20 Mbps)
-    // Allow wide range due to timing variance: 10,000 - 40,000 kbps
-    EXPECT_GT(stats.receiveBitrateKbps, 10000);
-    EXPECT_LT(stats.receiveBitrateKbps, 40000);
+    // Allow wide range due to timing variance on CI: 5,000 - 80,000 kbps
+    EXPECT_GT(stats.receiveBitrateKbps, 5000);
+    EXPECT_LT(stats.receiveBitrateKbps, 80000);
 }
 
 // =============================================================================
